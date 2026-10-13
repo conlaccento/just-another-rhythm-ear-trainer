@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { describeRhythm, meterKey, type Rhythm } from '../../rhythm';
 import type { RenderHandle } from '../../notation';
-import { canListen, remainingListens, type ExerciseAction, type ExerciseState } from '../exercise/exercise';
+import type { ExerciseAction, ExerciseState } from '../exercise/exercise';
 import { usePlayer } from '../hooks/usePlayer';
 import type { Settings } from '../settings/settings';
 import { Notation } from './Notation';
@@ -26,15 +26,7 @@ function keepInView(element: Element | null): void {
   element.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
 }
 
-function listensText(exercise: ExerciseState, settings: Settings): string {
-  const remaining = remainingListens(exercise, settings.maxListens);
-  if (exercise.phase === 'revealed') return 'Soluzione visibile: puoi riascoltare liberamente.';
-  if (remaining === null) return `Ascolti: ${exercise.listens} (illimitati).`;
-  if (remaining === 0) return 'Ascolti esauriti: mostra la soluzione per confrontare.';
-  return `Ascolti: ${exercise.listens} di ${settings.maxListens}. ${remaining === 1 ? 'Ne resta 1' : `Ne restano ${remaining}`}.`;
-}
-
-/** Exercise flow: listen (limited), reveal the solution, listen again with highlighting. */
+/** Exercise flow: listen as often as wanted, reveal the solution when ready, listen again with highlighting. */
 export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onNewExercise, shareUrl }: ExercisePanelProps) {
   const handleRef = useRef<RenderHandle | null>(null);
   const solutionHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -47,7 +39,6 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
   });
   const playing = playerState !== 'idle';
   const revealed = exercise.phase === 'revealed';
-  const listenAllowed = rhythm !== null && canListen(exercise, settings.maxListens);
 
   // A new or regenerated exercise must not keep sounding.
   useEffect(() => stop, [rhythm, stop]);
@@ -57,22 +48,9 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
       stop();
       return;
     }
-    if (!rhythm || !listenAllowed) return;
-    dispatch({ type: 'listen' });
+    if (!rhythm) return;
     const result = await play(rhythm, { bpm: settings.bpm, metronome: settings.metronome });
-    const remaining = remainingListens(
-      { ...exercise, listens: exercise.phase === 'listening' ? exercise.listens + 1 : exercise.listens },
-      settings.maxListens,
-    );
-    const left =
-      remaining === null
-        ? ''
-        : remaining === 0
-          ? ' Ascolti esauriti: ora puoi mostrare la soluzione.'
-          : remaining === 1
-            ? ' Resta 1 ascolto.'
-            : ` Restano ${remaining} ascolti.`;
-    setAnnouncement(`${result === 'ended' ? 'Ascolto terminato.' : 'Ascolto interrotto.'}${left}`);
+    setAnnouncement(result === 'ended' ? 'Ascolto terminato.' : 'Ascolto interrotto.');
   };
 
   const onReveal = (): void => {
@@ -100,8 +78,8 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
     <section className="exercise" aria-labelledby="exercise-title">
       <h2 id="exercise-title">Esercizio</h2>
       <p className="instructions">
-        Ascolta il ritmo, trascrivilo su carta, poi mostra la soluzione e confronta. Prima del dettato senti l’attacco del
-        metronomo.
+        Ascolta il ritmo quante volte vuoi e trascrivilo su carta; quando sei pronto, mostra la soluzione e confronta.
+        Prima del dettato senti l’attacco del metronomo.
       </p>
 
       {rhythm ? (
@@ -110,7 +88,7 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
             Tempo <strong>{meterKey(rhythm.timeSignature)}</strong>
           </span>
           <span>
-            <strong>{rhythm.measures.length}</strong> battute
+            <strong>{rhythm.measures.length}</strong> {rhythm.measures.length === 1 ? 'battuta' : 'battute'}
           </span>
           <span>
             <strong>{settings.bpm}</strong> BPM
@@ -127,10 +105,10 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
           type="button"
           className="primary"
           onClick={() => void onListen()}
-          disabled={!playing && !listenAllowed}
-          aria-describedby="listens-status"
+          disabled={!rhythm}
+          aria-describedby="playback-status"
         >
-          {playing ? 'Stop' : exercise.listens > 0 || revealed ? 'Riascolta' : 'Ascolta'}
+          {playing ? 'Stop' : 'Ascolta'}
         </button>
         {!revealed && (
           <button type="button" className="secondary" onClick={onReveal} disabled={!rhythm}>
@@ -142,8 +120,8 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
         </button>
       </div>
 
-      <p id="listens-status" className="listens-status">
-        {playerState === 'count-in' ? 'Attacco del metronomo…' : playerState === 'playing' ? 'Dettato in corso…' : listensText(exercise, settings)}
+      <p id="playback-status" className="playback-status">
+        {playerState === 'count-in' ? 'Attacco del metronomo…' : playerState === 'playing' ? 'Dettato in corso…' : ''}
       </p>
       <p className="visually-hidden" role="status" aria-live="polite">
         {announcement}
@@ -156,8 +134,7 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
           </h3>
           <Notation
             rhythm={rhythm}
-            staff={settings.staff}
-            title={`Soluzione: tempo ${meterKey(rhythm.timeSignature)}, ${rhythm.measures.length} battute`}
+            title={`Soluzione: tempo ${meterKey(rhythm.timeSignature)}, ${rhythm.measures.length} ${rhythm.measures.length === 1 ? 'battuta' : 'battute'}`}
             description={description.join('. ')}
             onHandle={(handle) => {
               handleRef.current = handle;

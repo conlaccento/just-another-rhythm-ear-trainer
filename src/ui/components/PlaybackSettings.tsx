@@ -1,13 +1,13 @@
 import { useId } from 'react';
 import { MAX_BPM, MIN_BPM } from '../../audio';
-import { MAX_LISTENS_OPTIONS, MEASURE_OPTIONS, type MaxListens, type MeasureCount, type Settings } from '../settings/settings';
+import { MEASURE_OPTIONS, type MeasureCount, type Settings } from '../settings/settings';
 
 interface PlaybackSettingsProps {
   readonly settings: Settings;
   readonly onChange: (patch: Partial<Settings>) => void;
 }
 
-/** Length, tempo, metronome, listening limit and staff type. */
+/** Length, tempo and metronome. */
 export function PlaybackSettings({ settings, onChange }: PlaybackSettingsProps) {
   const id = useId();
   return (
@@ -25,19 +25,6 @@ export function PlaybackSettings({ settings, onChange }: PlaybackSettingsProps) 
           </select>
         </label>
 
-        <label className="field">
-          <span>Ascolti prima della soluzione</span>
-          <select
-            value={settings.maxListens ?? 'unlimited'}
-            onChange={(e) => onChange({ maxListens: (e.target.value === 'unlimited' ? null : Number(e.target.value)) as MaxListens })}
-          >
-            {MAX_LISTENS_OPTIONS.map((n) => (
-              <option key={n ?? 'unlimited'} value={n ?? 'unlimited'}>
-                {n ?? 'Illimitati'}
-              </option>
-            ))}
-          </select>
-        </label>
 
         <div className="field field-wide">
           <label htmlFor={`${id}-bpm`}>
@@ -61,13 +48,6 @@ export function PlaybackSettings({ settings, onChange }: PlaybackSettingsProps) 
           <span>Metronomo anche durante il dettato</span>
         </label>
 
-        <label className="field field-wide">
-          <span>Rigo della soluzione</span>
-          <select value={settings.staff} onChange={(e) => onChange({ staff: e.target.value === 'pitched' ? 'pitched' : 'percussion' })}>
-            <option value="percussion">A una linea (percussione)</option>
-            <option value="pitched">Pentagramma</option>
-          </select>
-        </label>
       </div>
     </fieldset>
   );

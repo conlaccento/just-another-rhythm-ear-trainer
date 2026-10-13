@@ -16,10 +16,14 @@ describe('exercise URL', () => {
     expect(readExerciseFromUrl(search, DEFAULT_SETTINGS)).toEqual({ seed: 'k3x9q2', settings });
   });
 
-  it('keeps personal settings (staff, metronome, limit) from the base', () => {
-    const base = { ...DEFAULT_SETTINGS, staff: 'pitched', metronome: true, maxListens: null } as const;
+  it('keeps the personal metronome setting from the base', () => {
+    const base = { ...DEFAULT_SETTINGS, metronome: true };
     const { settings: parsed } = readExerciseFromUrl(exerciseSearch('a', settings), base);
-    expect(parsed).toMatchObject({ staff: 'pitched', metronome: true, maxListens: null });
+    expect(parsed.metronome).toBe(true);
+  });
+
+  it('accepts single-measure exercises', () => {
+    expect(readExerciseFromUrl('?seed=a&n=1', DEFAULT_SETTINGS).settings.measures).toBe(1);
   });
 
   it('ignores invalid values', () => {

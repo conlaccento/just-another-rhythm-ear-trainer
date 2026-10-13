@@ -325,7 +325,7 @@ h3 {
   cursor: not-allowed;
 }
 
-.listens-status {
+.playback-status {
   min-height: 1.45em;
   margin: 12px 0 16px;
 }

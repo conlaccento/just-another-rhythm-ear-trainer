@@ -21,7 +21,7 @@ export const CELLS: readonly CellDef[] = [
   { id: 'h', meterKind: 'simple', beats: 2, weight: 5, figures: ['h'], tags: ['cadential'] },
   { id: 'rh', meterKind: 'simple', beats: 2, weight: 1, figures: ['rh'], meters: ['4/4'] },
   { id: 'w', meterKind: 'simple', beats: 4, weight: 2, figures: ['w'], meters: ['4/4'], tags: ['cadential'] },
-  { id: 'rw', meterKind: 'simple', beats: 4, weight: 0.5, figures: ['rw'], meters: ['4/4'] },
+  { id: 'rw', meterKind: 'simple', beats: 4, weight: 2, figures: ['rw'], meters: ['4/4'] },
 
   // Eighths
   { id: '8-8', meterKind: 'simple', beats: 1, weight: 8, figures: ['8', '8'] },

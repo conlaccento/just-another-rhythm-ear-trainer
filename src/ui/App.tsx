@@ -46,7 +46,7 @@ export function App() {
 
   const update = (patch: Partial<Settings>): void => {
     setSettings((s) => ({ ...s, ...patch }));
-    // A different rhythm means a fresh attempt (listens reset, solution hidden).
+    // A different rhythm means a fresh attempt: hide the solution again.
     if (patch.selection || patch.measures) dispatch({ type: 'restart' });
   };
 

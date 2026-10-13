@@ -12,7 +12,7 @@ import { disallowedFeatures, validateRhythm } from './validate';
 
 const ALL_ELEMENTS = ELEMENTS.map((e) => e.id);
 const FULL: FigureSelection = { elements: ALL_ELEMENTS, meters: METERS };
-const MEASURE_COUNTS = [2, 4, 8] as const;
+const MEASURE_COUNTS = [1, 2, 4, 8] as const;
 const difficultIds = new Set(CELLS.filter((c) => c.tags?.includes('difficult')).map((c) => c.id));
 
 /** Every rhythm must satisfy these, whatever the selection. */
@@ -30,7 +30,7 @@ const fullCases: Rhythm[] = METERS.flatMap((meter) =>
   Array.from({ length: 150 }, (_, s) =>
     generateRhythm({
       selection: FULL,
-      measures: MEASURE_COUNTS[s % 3] ?? 4,
+      measures: MEASURE_COUNTS[s % MEASURE_COUNTS.length] ?? 4,
       seed: `full-${meter}-${s}`,
       timeSignature: parseMeter(meter),
     }),
