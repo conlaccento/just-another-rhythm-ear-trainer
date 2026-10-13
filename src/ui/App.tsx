@@ -1,94 +1,76 @@
-import { useEffect, useMemo, useState } from 'react';
-import { describeRhythm, describeTimeSignature, generateRhythm, GenerationError, type Rhythm } from '../rhythm';
+import { useEffect, useMemo, useReducer, useState } from 'react';
+import { generateRhythm, GenerationError, type FigureSelection, type Rhythm } from '../rhythm';
+import { ExercisePanel } from './components/ExercisePanel';
 import { FigurePicker } from './components/FigurePicker';
-import { Notation } from './components/Notation';
-import { loadSettings, MEASURE_OPTIONS, saveSettings, type MeasureCount, type Settings } from './settings/settings';
-
-const newSeed = (): string => Math.random().toString(36).slice(2, 8);
+import { PlaybackSettings } from './components/PlaybackSettings';
+import { exerciseReducer, initialExercise } from './exercise/exercise';
+import { loadSettings, saveSettings, type Settings } from './settings/settings';
+import { exerciseSearch, newSeed, readExerciseFromUrl } from './settings/url';
 
 type Generated = { rhythm: Rhythm; error: null } | { rhythm: null; error: string };
 
-function generate(settings: Settings, seed: string): Generated {
+function generate(selection: FigureSelection, measures: number, seed: string): Generated {
   try {
-    return { rhythm: generateRhythm({ selection: settings.selection, measures: settings.measures, seed }), error: null };
+    return { rhythm: generateRhythm({ selection, measures, seed }), error: null };
   } catch (e) {
     if (e instanceof GenerationError) return { rhythm: null, error: e.message };
     throw e;
   }
 }
 
+/** Settings and seed come from the URL when present (shared exercise), otherwise from storage. */
+function initialState() {
+  const fromUrl = readExerciseFromUrl(window.location.search, loadSettings());
+  return { settings: fromUrl.settings, seed: fromUrl.seed ?? newSeed() };
+}
+
 export function App() {
-  const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [seed, setSeed] = useState(newSeed);
+  const [initial] = useState(initialState);
+  const [settings, setSettings] = useState<Settings>(initial.settings);
+  const [exercise, dispatch] = useReducer(exerciseReducer, initial.seed, initialExercise);
 
   useEffect(() => saveSettings(settings), [settings]);
 
-  const generated = useMemo(() => generate(settings, seed), [settings, seed]);
-  const description = useMemo(() => (generated.rhythm ? describeRhythm(generated.rhythm) : []), [generated]);
+  const search = exerciseSearch(exercise.seed, settings);
+  useEffect(() => {
+    try {
+      window.history.replaceState(null, '', search);
+    } catch {
+      // Some embedded contexts forbid history changes; the share link still works.
+    }
+  }, [search]);
+  const shareUrl = `${window.location.origin}${window.location.pathname}${search}`;
 
-  const update = (patch: Partial<Settings>): void => setSettings((s) => ({ ...s, ...patch }));
+  const { selection, measures } = settings;
+  const generated = useMemo(() => generate(selection, measures, exercise.seed), [selection, measures, exercise.seed]);
+
+  const update = (patch: Partial<Settings>): void => {
+    setSettings((s) => ({ ...s, ...patch }));
+    // A different rhythm means a fresh attempt (listens reset, solution hidden).
+    if (patch.selection || patch.measures) dispatch({ type: 'restart' });
+  };
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>Dettato ritmico</h1>
       </header>
-      <div className="layout">
-        <FigurePicker selection={settings.selection} onChange={(selection) => update({ selection })} />
-
-        <section className="exercise" aria-labelledby="exercise-title">
-          <h2 id="exercise-title">Anteprima esercizio</h2>
-          <div className="toolbar">
-            <label className="field">
-              <span>Battute</span>
-              <select value={settings.measures} onChange={(e) => update({ measures: Number(e.target.value) as MeasureCount })}>
-                {MEASURE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Rigo</span>
-              <select value={settings.staff} onChange={(e) => update({ staff: e.target.value === 'pitched' ? 'pitched' : 'percussion' })}>
-                <option value="percussion">A una linea (percussione)</option>
-                <option value="pitched">Pentagramma</option>
-              </select>
-            </label>
-            <button type="button" className="primary" onClick={() => setSeed(newSeed())} disabled={generated.error !== null}>
-              Nuovo esercizio
-            </button>
-          </div>
-
-          {generated.rhythm ? (
-            <>
-              <Notation
-                rhythm={generated.rhythm}
-                staff={settings.staff}
-                title={`Soluzione: ${describeTimeSignature(generated.rhythm).toLowerCase()}, ${generated.rhythm.measures.length} battute`}
-                description={description.join('. ')}
-              />
-              <details className="text-alternative">
-                <summary>Descrizione testuale</summary>
-                <p>{describeTimeSignature(generated.rhythm)}</p>
-                <ol>
-                  {description.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ol>
-              </details>
-              <p className="seed">
-                Codice esercizio: <code>{seed}</code>
-              </p>
-            </>
-          ) : (
-            <p className="error" role="alert">
-              {generated.error}
-            </p>
-          )}
-        </section>
-      </div>
+      <main className="layout">
+        <ExercisePanel
+          rhythm={generated.rhythm}
+          error={generated.error}
+          settings={settings}
+          exercise={exercise}
+          dispatch={dispatch}
+          onNewExercise={() => dispatch({ type: 'new', seed: newSeed() })}
+          shareUrl={shareUrl}
+        />
+        <aside className="settings" aria-labelledby="settings-title">
+          <h2 id="settings-title">Impostazioni</h2>
+          <PlaybackSettings settings={settings} onChange={update} />
+          <FigurePicker selection={settings.selection} onChange={(s) => update({ selection: s })} />
+        </aside>
+      </main>
     </div>
   );
 }

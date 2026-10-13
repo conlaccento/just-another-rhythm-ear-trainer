@@ -8,11 +8,11 @@ interface FigurePickerProps {
   readonly onChange: (selection: FigureSelection) => void;
 }
 
-const CATEGORIES: readonly { id: ElementCategory; title: string; noun: string }[] = [
-  { id: 'note', title: 'Figure', noun: 'le figure' },
-  { id: 'rest', title: 'Pause', noun: 'le pause' },
-  { id: 'group', title: 'Gruppi irregolari', noun: 'i gruppi irregolari' },
-  { id: 'feature', title: 'Legature e sincopi', noun: 'legature e sincopi' },
+const CATEGORIES: readonly { id: ElementCategory; title: string }[] = [
+  { id: 'note', title: 'Figure' },
+  { id: 'rest', title: 'Pause' },
+  { id: 'group', title: 'Gruppi irregolari' },
+  { id: 'feature', title: 'Legature e sincopi' },
 ];
 
 const METER_NAMES: Readonly<Record<string, string>> = {
@@ -64,7 +64,7 @@ export function FigurePicker({ selection, onChange }: FigurePickerProps) {
 
   return (
     <section className="picker" aria-labelledby={`${baseId}-title`}>
-      <h2 id={`${baseId}-title`}>Cosa vuoi esercitare</h2>
+      <h3 id={`${baseId}-title`}>Cosa vuoi esercitare</h3>
 
       {CATEGORIES.map((category) => {
         const items = ELEMENTS.filter((e) => e.category === category.id);
@@ -73,11 +73,21 @@ export function FigurePicker({ selection, onChange }: FigurePickerProps) {
           <fieldset key={category.id} className="picker-group">
             <legend>{category.title}</legend>
             <div className="bulk-actions">
-              <button type="button" className="link-button" onClick={() => setElements([...new Set([...selection.elements, ...ids])])}>
-                Seleziona tutte <span className="visually-hidden">{category.noun}</span>
+              <button
+                type="button"
+                className="link-button"
+                aria-label={`Seleziona tutto: ${category.title.toLowerCase()}`}
+                onClick={() => setElements([...new Set([...selection.elements, ...ids])])}
+              >
+                Seleziona tutto
               </button>
-              <button type="button" className="link-button" onClick={() => setElements(selection.elements.filter((e) => !ids.includes(e)))}>
-                Nessuna <span className="visually-hidden">tra {category.noun}</span>
+              <button
+                type="button"
+                className="link-button"
+                aria-label={`Deseleziona tutto: ${category.title.toLowerCase()}`}
+                onClick={() => setElements(selection.elements.filter((e) => !ids.includes(e)))}
+              >
+                Deseleziona tutto
               </button>
             </div>
             <ul className="options" role="list">

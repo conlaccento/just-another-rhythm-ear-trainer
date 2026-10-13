@@ -42,9 +42,10 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
     callbacks.onStateChange?.(next);
   };
 
-  const halt = (result: PlaybackResult): void => {
+  /** `time` is the scheduled time when halting from inside a Transport callback. */
+  const halt = (result: PlaybackResult, time?: number): void => {
     const transport = Tone.getTransport();
-    transport.stop();
+    transport.stop(time);
     transport.cancel(0);
     Tone.getDraw().cancel(0);
     callbacks.onEvent?.(null);
@@ -79,7 +80,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
       }
       transport.schedule((time) => draw.schedule(() => setState('playing'), time), timeline.startTime);
       // The end is handled on the Transport itself, so it also fires in a background tab.
-      transport.scheduleOnce(() => halt('ended'), timeline.endTime + END_TAIL);
+      transport.scheduleOnce((time) => halt('ended', time), timeline.endTime + END_TAIL);
 
       setState('count-in');
       return new Promise<PlaybackResult>((resolve) => {
