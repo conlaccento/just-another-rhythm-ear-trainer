@@ -392,6 +392,34 @@ select {
   font-weight: 500;
 }
 
+/* ------------------------------------------------------------------ footer */
+.app-footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: var(--rule) solid var(--text);
+  font-size: 0.9rem;
+}
+
+.app-footer p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.app-footer a {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.footer-separator {
+  color: var(--primary);
+  font-size: 0.6rem;
+}
+
 /* ------------------------------------------------------------------ settings */
 .picker-group {
   margin: 0 0 20px;

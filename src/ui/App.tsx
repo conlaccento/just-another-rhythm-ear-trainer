@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import { generateRhythm, GenerationError, type FigureSelection, type Rhythm } from '../rhythm';
 import { ExercisePanel } from './components/ExercisePanel';
 import { FigurePicker } from './components/FigurePicker';
+import { Footer } from './components/Footer';
 import { Logo } from './components/Logo';
 import { PlaybackSettings } from './components/PlaybackSettings';
 import { exerciseReducer, initialExercise } from './exercise/exercise';
@@ -56,7 +57,7 @@ export function App() {
       <header className="app-header">
         <Logo />
         <div className="app-title">
-          <h1>Just Another Rhythm Ear Trainer</h1>
+          <h1 lang="en">Just Another Rhythm Ear Trainer</h1>
           <p className="app-subtitle">Dettato ritmico</p>
         </div>
       </header>
@@ -78,6 +79,7 @@ export function App() {
           <FigurePicker selection={settings.selection} onChange={(s) => update({ selection: s })} />
         </aside>
       </main>
+      <Footer />
     </div>
   );
 }
