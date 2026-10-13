@@ -31,21 +31,22 @@ const dark = { ...light, ...tokens(css, css.indexOf(':root', css.indexOf('prefer
 
 /** [foreground, background, minimum ratio, what it is] */
 const PAIRS: readonly [string, string, number, string][] = [
-  ['text', 'bg', 4.5, 'body text'],
-  ['text', 'surface', 4.5, 'text on summary box'],
-  ['text', 'accent-soft', 4.5, 'label of a selected option'],
-  ['text', 'warning-soft', 4.5, 'label of an option with a warning'],
+  ['text', 'bg', 4.5, 'body text (and inverted legends)'],
+  ['text', 'surface', 4.5, 'text on the summary box'],
   ['muted', 'bg', 4.5, 'secondary text'],
-  ['accent', 'bg', 4.5, 'links and secondary buttons'],
-  ['on-accent', 'accent', 4.5, 'primary button label'],
+  ['accent', 'bg', 4.5, 'links'],
+  ['on-primary', 'primary', 4.5, 'main button label (red)'],
+  ['on-accent-soft', 'accent-soft', 4.5, 'selected option and hovered button (yellow)'],
+  ['text', 'warning-soft', 4.5, 'label of an option with a warning'],
   ['warning', 'bg', 4.5, 'warning text'],
-  ['warning', 'warning-soft', 4.5, 'warning text in summary box'],
+  ['warning', 'warning-soft', 4.5, 'warning text in the summary box'],
   ['error', 'bg', 4.5, 'error text'],
   ['highlight', 'bg', 3, 'current note while playing (graphics)'],
   ['highlight', 'text', 1.5, 'current note distinguishable from other notes'],
   ['border', 'bg', 3, 'control boundaries'],
+  ['warning', 'warning-soft', 3, 'dashed border of an option with a warning'],
+  // The focus outline has a 3px offset, so it always sits on the page background.
   ['focus', 'bg', 3, 'focus indicator'],
-  ['accent', 'accent-soft', 3, 'selected option border'],
 ];
 
 describe.each([

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import { generateRhythm, GenerationError, type FigureSelection, type Rhythm } from '../rhythm';
 import { ExercisePanel } from './components/ExercisePanel';
 import { FigurePicker } from './components/FigurePicker';
+import { Logo } from './components/Logo';
 import { PlaybackSettings } from './components/PlaybackSettings';
 import { exerciseReducer, initialExercise } from './exercise/exercise';
 import { loadSettings, saveSettings, type Settings } from './settings/settings';
@@ -53,7 +54,11 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Dettato ritmico</h1>
+        <Logo />
+        <div className="app-title">
+          <h1>Just Another Rhythm Ear Trainer</h1>
+          <p className="app-subtitle">Dettato ritmico</p>
+        </div>
       </header>
       <main className="layout">
         <ExercisePanel
@@ -66,7 +71,9 @@ export function App() {
           shareUrl={shareUrl}
         />
         <aside className="settings" aria-labelledby="settings-title">
-          <h2 id="settings-title">Impostazioni</h2>
+          <h2 id="settings-title" className="heading heading-circle">
+            Impostazioni
+          </h2>
           <PlaybackSettings settings={settings} onChange={update} />
           <FigurePicker selection={settings.selection} onChange={(s) => update({ selection: s })} />
         </aside>

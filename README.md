@@ -1,4 +1,4 @@
-# Dettato ritmico
+# Just Another Rhythm Ear Trainer
 
 Web app per esercitarsi nel dettato ritmico: l'app genera un ritmo, lo studente lo
 ascolta e lo trascrive su carta, poi mostra la soluzione e si autocorregge.

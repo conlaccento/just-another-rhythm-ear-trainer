@@ -64,7 +64,9 @@ export function FigurePicker({ selection, onChange }: FigurePickerProps) {
 
   return (
     <section className="picker" aria-labelledby={`${baseId}-title`}>
-      <h3 id={`${baseId}-title`}>Cosa vuoi esercitare</h3>
+      <h3 id={`${baseId}-title`} className="heading heading-triangle">
+        Cosa vuoi esercitare
+      </h3>
 
       {CATEGORIES.map((category) => {
         const items = ELEMENTS.filter((e) => e.category === category.id);

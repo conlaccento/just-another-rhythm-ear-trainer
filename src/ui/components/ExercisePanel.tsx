@@ -76,24 +76,29 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
 
   return (
     <section className="exercise" aria-labelledby="exercise-title">
-      <h2 id="exercise-title">Esercizio</h2>
+      <h2 id="exercise-title" className="heading heading-square">
+        Esercizio
+      </h2>
       <p className="instructions">
         Ascolta il ritmo quante volte vuoi e trascrivilo su carta; quando sei pronto, mostra la soluzione e confronta.
         Prima del dettato senti l’attacco del metronomo.
       </p>
 
       {rhythm ? (
-        <p className="exercise-meta">
-          <span>
-            Tempo <strong>{meterKey(rhythm.timeSignature)}</strong>
-          </span>
-          <span>
-            <strong>{rhythm.measures.length}</strong> {rhythm.measures.length === 1 ? 'battuta' : 'battute'}
-          </span>
-          <span>
-            <strong>{settings.bpm}</strong> BPM
-          </span>
-        </p>
+        <dl className="exercise-meta">
+          <div className="meta-item">
+            <dt>Tempo</dt>
+            <dd>{meterKey(rhythm.timeSignature)}</dd>
+          </div>
+          <div className="meta-item">
+            <dt>{rhythm.measures.length === 1 ? 'Battuta' : 'Battute'}</dt>
+            <dd>{rhythm.measures.length}</dd>
+          </div>
+          <div className="meta-item">
+            <dt>BPM</dt>
+            <dd>{settings.bpm}</dd>
+          </div>
+        </dl>
       ) : (
         <p className="error" role="alert">
           {error}
