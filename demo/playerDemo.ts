@@ -3,7 +3,7 @@
 import { ELEMENTS, generateRhythm, parseMeter } from '../src/rhythm';
 import { loadNotationFonts, renderRhythm, type RenderHandle } from '../src/notation';
 import * as Tone from 'tone';
-import { buildTimeline, createPlayer, type Timbre } from '../src/audio';
+import { buildTimeline, createPlayer } from '../src/audio';
 
 const form = document.querySelector<HTMLFormElement>('#controls')!;
 const out = document.querySelector<HTMLDivElement>('#out')!;
@@ -46,7 +46,6 @@ function current() {
   const options = {
     bpm: Number(data.get('bpm')),
     metronome: data.get('metronome') === 'on',
-    timbre: String(data.get('timbre')) as Timbre,
   };
   return { rhythm, options };
 }

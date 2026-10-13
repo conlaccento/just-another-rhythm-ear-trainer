@@ -1,14 +1,12 @@
 import * as Tone from 'tone';
 import type { Rhythm } from '../rhythm';
-import { createInstruments, type Instruments, type Timbre } from './instruments';
+import { createInstruments, type Instruments } from './instruments';
 import { buildTimeline, type TimelineOptions } from './timeline';
 
 export type PlayerState = 'idle' | 'count-in' | 'playing';
 export type PlaybackResult = 'ended' | 'stopped';
 
-export interface PlaybackOptions extends TimelineOptions {
-  readonly timbre: Timbre;
-}
+export type PlaybackOptions = TimelineOptions;
 
 export interface PlayerCallbacks {
   /** Current event index (for highlighting), or null when nothing is playing. Called via Tone.Draw. */
@@ -49,7 +47,6 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
     transport.stop();
     transport.cancel(0);
     Tone.getDraw().cancel(0);
-    instruments?.silence();
     callbacks.onEvent?.(null);
     setState('idle');
     const resolve = finish;
@@ -75,7 +72,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
         transport.schedule((time) => voice.click(time, click.accent), click.time);
       }
       for (const note of timeline.notes) {
-        transport.schedule((time) => voice.note(options.timbre, time, note.duration), note.time);
+        transport.schedule((time) => voice.note(time), note.time);
       }
       for (const h of timeline.highlights) {
         transport.schedule((time) => draw.schedule(() => callbacks.onEvent?.(h.index), time), h.time);

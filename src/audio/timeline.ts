@@ -46,11 +46,6 @@ export function clampBpm(bpm: number): number {
   return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));
 }
 
-/** Slightly shortens each note so repeated notes stay distinguishable. */
-export function articulatedDuration(duration: number): number {
-  return Math.max(0.05, duration - Math.min(0.06, duration * 0.15));
-}
-
 /** Count-in length: one measure, or two for two-beat meters so the pulse is clear. */
 export function countInMeasures(beatsInMeasure: number): number {
   return beatsInMeasure < 3 ? 2 : 1;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseFigures, parseMeter, type CellFigure, type Rhythm } from '../rhythm';
-import { articulatedDuration, buildTimeline, clampBpm } from './timeline';
+import { buildTimeline, clampBpm } from './timeline';
 
 function rhythmOf(meter: string, ...measures: CellFigure[][]): Rhythm {
   let id = 0;
@@ -71,9 +71,4 @@ describe('buildTimeline', () => {
     expect(clampBpm(92.4)).toBe(92);
   });
 
-  it('articulates notes slightly shorter than written, never below 50 ms', () => {
-    expect(articulatedDuration(1)).toBeCloseTo(0.94);
-    expect(articulatedDuration(0.2)).toBeCloseTo(0.17);
-    expect(articulatedDuration(0.04)).toBe(0.05);
-  });
 });
