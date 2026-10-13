@@ -1,9 +1,22 @@
-import { figureKey, figureName, notatedFigure } from './figures';
+import { groupKey } from './features';
+import { figureKey, figureName, notatedFigure, type BaseFigure } from './figures';
 import { flattenRhythm, type PositionedEvent } from './flatten';
 import { beatTicks, meterKey } from './meters';
 import type { Rhythm } from './types';
 
 const COUNT_WORDS = ['zero', 'una', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto'];
+const GROUP_NAMES: Readonly<Record<number, string>> = { 2: 'duina', 3: 'terzina', 4: 'quartina', 6: 'sestina' };
+
+/** "terzina di crome", "sestina di semicrome", or "terzina (semiminima, croma)" for mixed groups. */
+function describeGroup(group: readonly PositionedEvent[]): string {
+  const events = group.map((q) => q.event);
+  const first = events[0];
+  const name = (first?.tuplet && GROUP_NAMES[first.tuplet.actual]) ?? `gruppo di ${events.length}`;
+  const unit = groupKey(events).split(':')[2] as BaseFigure;
+  const uniform = events.every((e) => !e.isRest && !e.tiedToNext && figureKey(e) === `note:${unit}`);
+  if (uniform) return `${name} di ${figureName({ base: unit, dots: 0 }, false, true)}`;
+  return `${name} (${group.map((q) => eventName(q)).join(', ')})`;
+}
 
 function eventName(p: PositionedEvent, plural = false): string {
   const name = figureName(notatedFigure(p.event), p.event.isRest, plural);
@@ -20,8 +33,7 @@ function describeEvents(events: readonly PositionedEvent[], beat: number): strin
     const tuplet = p.event.tuplet;
     if (tuplet) {
       const group = events.filter((q) => q.event.tuplet?.id === tuplet.id);
-      const allEighthNotes = group.every((q) => !q.event.isRest && figureKey(q.event) === 'triplet-note:eighth');
-      parts.push(allEighthNotes ? 'terzina di crome' : `terzina (${group.map((q) => eventName(q)).join(', ')})`);
+      parts.push(describeGroup(group));
       i += group.length;
       continue;
     }

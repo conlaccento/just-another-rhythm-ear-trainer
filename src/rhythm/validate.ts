@@ -1,8 +1,8 @@
-import { figureFromTicks, figureKey, notatedTicks } from './figures';
+import { rhythmFeatures, syncopationIndices } from './features';
+import { figureFromTicks, notatedTicks } from './figures';
 import { flattenRhythm, type PositionedEvent } from './flatten';
-import { COMPOUND_FIGURES, SIMPLE_FIGURE_MIN_LEVEL } from './levels';
 import { beatTicks, beatsPerMeasure, measureTicks, meterKind, spanRespectsMiddle } from './meters';
-import type { Level, Rhythm, TimeSignature } from './types';
+import type { Rhythm, TimeSignature } from './types';
 
 const sameBeat = (start: number, end: number, beat: number): boolean =>
   Math.floor(start / beat) === Math.floor((end - 1) / beat);
@@ -58,7 +58,9 @@ export function validateRhythm(rhythm: Rhythm): string[] {
     if (!figureFromTicks(notatedTicks(event))) errors.push(`${where}: duration is not a single figure`);
     if (end > barTicks) errors.push(`${where}: crosses the barline`);
 
-    const groupingOk = event.isRest ? restGroupingOk(ts, start, end) : noteGroupingOk(ts, start, end);
+    // Tuplet members are checked as a whole group below.
+    const groupingOk =
+      event.tuplet !== undefined || (event.isRest ? restGroupingOk(ts, start, end) : noteGroupingOk(ts, start, end));
     if (!groupingOk) errors.push(`${where}: ${event.isRest ? 'rest' : 'note'} hides a beat`);
 
     if (event.tiedToNext) {
@@ -74,7 +76,8 @@ export function validateRhythm(rhythm: Rhythm): string[] {
     }
   });
 
-  // Tuplets: contiguous, one beat long, starting on the beat, within one measure.
+  // Tuplets: contiguous, inside one measure, lasting half a beat, one beat or whole beats,
+  // and aligned to their own length (whole-beat groups also respect the middle of 4/4).
   const groups = new Map<number, PositionedEvent[]>();
   for (const p of flat) {
     if (!p.event.tuplet) continue;
@@ -88,52 +91,24 @@ export function validateRhythm(rhythm: Rhythm): string[] {
     const ticks = group.reduce((acc, p) => acc + p.event.durationTicks, 0);
     const contiguous = group.every((p, k) => p.index === first.index + k && p.measureIndex === first.measureIndex);
     if (!contiguous) errors.push(`tuplet ${id}: not contiguous`);
-    if (ticks !== beat || first.tickInMeasure % beat !== 0) errors.push(`tuplet ${id}: does not fill one beat`);
+    const start = first.tickInMeasure;
+    const aligned =
+      ticks === beat / 2
+        ? start % (beat / 2) === 0
+        : ticks % beat === 0 && start % beat === 0 && spanRespectsMiddle(ts, start / beat, ticks / beat);
+    if (!aligned) errors.push(`tuplet ${id}: badly aligned or sized (${ticks} ticks at ${start})`);
   }
 
   return errors;
 }
 
-/**
- * Notes attacked off the beat and held (possibly through ties) past the next beat.
- * Returns the indices of the attacking events.
- */
+/** Indices of syncopated attacks in the rhythm. */
 export function findSyncopations(rhythm: Rhythm): number[] {
-  const beat = beatTicks(rhythm.timeSignature);
-  const flat = flattenRhythm(rhythm);
-  const result: number[] = [];
-  flat.forEach((p, i) => {
-    const prev = flat[i - 1];
-    if (p.event.isRest || p.startTick % beat === 0 || prev?.event.tiedToNext) return;
-    let k = i;
-    let sustainEnd = p.startTick + p.event.durationTicks;
-    while (flat[k]?.event.tiedToNext && flat[k + 1]) {
-      k++;
-      const next = flat[k];
-      if (next) sustainEnd = next.startTick + next.event.durationTicks;
-    }
-    if (sustainEnd > (Math.floor(p.startTick / beat) + 1) * beat) result.push(i);
-  });
-  return result;
+  return syncopationIndices(flattenRhythm(rhythm), beatTicks(rhythm.timeSignature));
 }
 
-/** Figure keys and features (`tie`, `syncopation`) used by a rhythm. */
-export function rhythmFeatures(rhythm: Rhythm): Set<string> {
-  const features = new Set<string>();
-  for (const p of flattenRhythm(rhythm)) {
-    features.add(figureKey(p.event));
-    if (p.event.tiedToNext) features.add('tie');
-  }
-  if (findSyncopations(rhythm).length > 0) features.add('syncopation');
-  return features;
-}
-
-/** Features of the rhythm that its level does not allow. */
-export function disallowedFeatures(rhythm: Rhythm, level: Level = rhythm.level): string[] {
-  const compound = meterKind(rhythm.timeSignature) === 'compound';
-  return [...rhythmFeatures(rhythm)].filter((f) => {
-    if (compound) return level < 7 || !COMPOUND_FIGURES.has(f);
-    const min = SIMPLE_FIGURE_MIN_LEVEL[f];
-    return min === undefined || min > level;
-  });
+/** Elements used by the rhythm that are not in `elements` (defaults to the rhythm's own selection). */
+export function disallowedFeatures(rhythm: Rhythm, elements: readonly string[] = rhythm.elements): string[] {
+  const allowed = new Set(elements);
+  return [...rhythmFeatures(rhythm)].filter((f) => !allowed.has(f));
 }

@@ -14,6 +14,7 @@ import {
 } from 'vexflow/bravura';
 import { meterKey, type Rhythm } from '../rhythm';
 import { layoutLines } from './layout';
+import { useCurrentColor } from './svgUtils';
 import { measureSpecs, type MeasureSpec } from './vexMapping';
 
 export type StaffType = 'percussion' | 'pitched';
@@ -117,17 +118,6 @@ function headerWidth(options: RenderOptions, timeSignature: string | null): numb
   stave.addClef(options.staff === 'pitched' ? 'treble' : 'percussion');
   if (timeSignature) stave.addTimeSignature(timeSignature);
   return stave.getNoteStartX() - stave.getX() + 8;
-}
-
-/** Makes every black fill/stroke follow the CSS `color`, so dark mode and highlighting work. */
-function useCurrentColor(svg: SVGSVGElement): void {
-  for (const attr of ['fill', 'stroke'] as const) {
-    svg.querySelectorAll(`[${attr}="black"], [${attr}="#000"], [${attr}="#000000"]`).forEach((el) => {
-      el.setAttribute(attr, 'currentColor');
-    });
-  }
-  if (svg.getAttribute('fill') === 'black') svg.setAttribute('fill', 'currentColor');
-  if (svg.getAttribute('stroke') === 'black') svg.setAttribute('stroke', 'currentColor');
 }
 
 function addAccessibleText(svg: SVGSVGElement, options: RenderOptions): void {

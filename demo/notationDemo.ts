@@ -1,5 +1,5 @@
 // Development page for the VexFlow renderer (not part of the app bundle).
-import { describeRhythm, describeTimeSignature, generateRhythm, parseMeter, type Level } from '../src/rhythm';
+import { describeRhythm, describeTimeSignature, ELEMENTS, generateRhythm, METERS, parseMeter } from '../src/rhythm';
 import { loadNotationFonts, renderRhythm, type RenderHandle, type StaffType } from '../src/notation';
 
 const form = document.querySelector<HTMLFormElement>('#controls')!;
@@ -11,7 +11,7 @@ let cursor = -1;
 function render(): void {
   const data = new FormData(form);
   const rhythm = generateRhythm({
-    level: Number(data.get('level')) as Level,
+    selection: { elements: ELEMENTS.map((e) => e.id), meters: METERS },
     measures: Number(data.get('measures')),
     seed: String(data.get('seed')),
     ...(data.get('meter') ? { timeSignature: parseMeter(String(data.get('meter'))) } : {}),
@@ -34,7 +34,7 @@ function step(delta: number): void {
   handle.highlight(cursor);
 }
 
-// URL parameters pre-fill the form (handy for screenshots): ?level=6&staff=pitched&cursor=3
+// URL parameters pre-fill the form (handy for screenshots): ?meter=4/4&staff=pitched&cursor=3
 const params = new URLSearchParams(location.search);
 for (const [name, value] of params) {
   const field = form.elements.namedItem(name);

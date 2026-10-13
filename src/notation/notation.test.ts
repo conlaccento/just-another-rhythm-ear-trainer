@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { generateRhythm, parseFigures, parseMeter, type Rhythm } from '../rhythm';
+import { ELEMENTS, METERS, generateRhythm, parseFigures, parseMeter, type CellFigure, type Rhythm } from '../rhythm';
 import { layoutLines } from './layout';
 import { measureSpecs } from './vexMapping';
 
-function rhythmOf(meter: string, ...measures: string[][]): Rhythm {
+function rhythmOf(meter: string, ...measures: CellFigure[][]): Rhythm {
   let id = 0;
   return {
     timeSignature: parseMeter(meter),
-    level: 7,
+    elements: [],
     seed: 'test',
     measures: measures.map((figures) => ({ events: parseFigures(figures, () => id++), cellIds: [] })),
   };
@@ -27,7 +27,7 @@ describe('measureSpecs', () => {
   it('maps dotted figures and triplets', () => {
     const [spec] = measureSpecs(rhythmOf('2/4', ['q.', '8']));
     expect(spec?.notes.map((n) => [n.duration, n.dots])).toEqual([['q', 1], ['8', 0]]);
-    const specs = measureSpecs(rhythmOf('2/4', ['t8', 't8', 't8', 'tq', 't8']));
+    const specs = measureSpecs(rhythmOf('2/4', [{ tuplet: [3, 2], figures: ['8', '8', '8'] }, { tuplet: [3, 2], figures: ['q', '8'] }]));
     expect(specs[0]?.notes.map((n) => n.duration)).toEqual(['8', '8', '8', 'q', '8']);
     expect(specs[0]?.tuplets).toEqual([
       { members: [0, 1, 2], numNotes: 3, notesOccupied: 2, bracketed: false },
@@ -41,8 +41,17 @@ describe('measureSpecs', () => {
   });
 
   it('keeps global indices across measures', () => {
-    const specs = measureSpecs(generateRhythm({ level: 4, measures: 4, seed: 'idx' }));
+    const specs = measureSpecs(generateRhythm({ selection: { elements: ELEMENTS.map((e) => e.id), meters: METERS }, measures: 4, seed: 'idx' }));
     expect(specs.flatMap((s) => s.notes.map((n) => n.index))).toEqual(specs.flatMap((s) => s.notes).map((_, i) => i));
+  });
+
+  it('maps sextuplets and duplets to their written values', () => {
+    const [simple] = measureSpecs(rhythmOf('2/4', [{ tuplet: [6, 4], figures: ['16', '16', '16', '16', '16', '16'] }, 'q']));
+    expect(simple?.notes.map((n) => n.duration)).toEqual(['16', '16', '16', '16', '16', '16', 'q']);
+    expect(simple?.tuplets).toEqual([{ members: [0, 1, 2, 3, 4, 5], numNotes: 6, notesOccupied: 4, bracketed: false }]);
+    const [compound] = measureSpecs(rhythmOf('6/8', [{ tuplet: [2, 3], figures: ['8', '8'] }, 'q.']));
+    expect(compound?.notes.map((n) => n.duration)).toEqual(['8', '8', 'q']);
+    expect(compound?.tuplets[0]).toMatchObject({ numNotes: 2, notesOccupied: 3 });
   });
 });
 
