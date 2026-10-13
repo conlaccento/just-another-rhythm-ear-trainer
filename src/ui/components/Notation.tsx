@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Rhythm } from '../../rhythm';
-import { renderRhythm, type RenderHandle, type StaffType } from '../../notation';
-import { notationFontsReady } from '../fonts';
+import type { RenderHandle, StaffType } from '../../notation';
+import { notationModule } from '../fonts';
 
 interface NotationProps {
   readonly rhythm: Rhythm;
@@ -23,22 +23,22 @@ export function Notation({ rhythm, staff, title, description, onHandle }: Notati
     if (!container) return;
     let cancelled = false;
     let lastWidth = -1;
-    const draw = (): void => {
-      const width = container.clientWidth;
-      if (cancelled || width === lastWidth || width === 0) return;
-      lastWidth = width;
-      const handle = renderRhythm(container, rhythm, { staff, title, description, width });
-      onHandleRef.current?.(handle);
-    };
-    const observer = new ResizeObserver(draw);
-    void notationFontsReady.then(() => {
+    let observer: ResizeObserver | null = null;
+    void notationModule.then(({ renderRhythm }) => {
       if (cancelled) return;
+      const draw = (): void => {
+        const width = container.clientWidth;
+        if (cancelled || width === lastWidth || width === 0) return;
+        lastWidth = width;
+        onHandleRef.current?.(renderRhythm(container, rhythm, { staff, title, description, width }));
+      };
       draw();
+      observer = new ResizeObserver(draw);
       observer.observe(container);
     });
     return () => {
       cancelled = true;
-      observer.disconnect();
+      observer?.disconnect();
       onHandleRef.current?.(null);
     };
   }, [rhythm, staff, title, description]);

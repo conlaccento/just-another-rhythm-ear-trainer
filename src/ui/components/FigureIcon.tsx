@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { CellFigure } from '../../rhythm';
-import { renderFigureIcon } from '../../notation';
-import { notationFontsReady } from '../fonts';
+import { notationModule } from '../fonts';
 
 interface FigureIconProps {
   readonly figures: readonly CellFigure[];
@@ -12,7 +11,7 @@ export function FigureIcon({ figures }: FigureIconProps) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     let cancelled = false;
-    void notationFontsReady.then(() => {
+    void notationModule.then(({ renderFigureIcon }) => {
       if (!cancelled && ref.current) renderFigureIcon(ref.current, figures);
     });
     return () => {

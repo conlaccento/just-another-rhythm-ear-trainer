@@ -132,6 +132,7 @@ h3 {
 }
 
 .link-button {
+  min-height: 32px; /* WCAG 2.5.8 target size */
   padding: 4px 0;
   border: 0;
   background: none;
@@ -416,4 +417,24 @@ select {
 
 .error {
   color: var(--warning);
+}
+
+/* Windows high contrast and other forced-colors modes: use system colours. */
+@media (forced-colors: active) {
+  .notation .vf-current {
+    color: Highlight;
+  }
+  .notation .vf-marker {
+    fill: Highlight;
+  }
+  .option[data-checked='true'] {
+    border-color: Highlight;
+  }
+  .option[data-warning='true'] {
+    border-style: dashed;
+  }
+  .primary,
+  .secondary {
+    border: 1px solid ButtonText;
+  }
 }

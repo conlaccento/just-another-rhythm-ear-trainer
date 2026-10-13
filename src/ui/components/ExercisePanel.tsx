@@ -16,6 +16,16 @@ interface ExercisePanelProps {
   readonly shareUrl: string;
 }
 
+const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Scrolls the current note into view when it leaves the viewport (long rhythms on phones). */
+function keepInView(element: Element | null): void {
+  if (!element) return;
+  const rect = element.getBoundingClientRect();
+  if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
+  element.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+
 function listensText(exercise: ExerciseState, settings: Settings): string {
   const remaining = remainingListens(exercise, settings.maxListens);
   if (exercise.phase === 'revealed') return 'Soluzione visibile: puoi riascoltare liberamente.';
@@ -29,7 +39,12 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
   const handleRef = useRef<RenderHandle | null>(null);
   const solutionHeadingRef = useRef<HTMLHeadingElement>(null);
   const [announcement, setAnnouncement] = useState('');
-  const { state: playerState, play, stop } = usePlayer((index) => handleRef.current?.highlight(index));
+  const { state: playerState, play, stop } = usePlayer((index) => {
+    const handle = handleRef.current;
+    if (!handle) return;
+    handle.highlight(index);
+    if (index !== null) keepInView(handle.svg.querySelector('.vf-marker'));
+  });
   const playing = playerState !== 'idle';
   const revealed = exercise.phase === 'revealed';
   const listenAllowed = rhythm !== null && canListen(exercise, settings.maxListens);
