@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prova notazione</title>
+    <style>
+      :root { color-scheme: light dark; --fg: #1a1a1a; --bg: #fff; --hl: #b3261e; }
+      @media (prefers-color-scheme: dark) { :root { --fg: #ececec; --bg: #16181d; --hl: #ff8a80; } }
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: var(--bg); color: var(--fg); }
+      form { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 16px; align-items: end; }
+      label { display: grid; gap: 2px; font-size: 14px; }
+      #out { color: var(--fg); }
+      .vf-current { color: var(--hl); }
+      .vf-marker { fill: var(--hl); }
+      pre { white-space: pre-wrap; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <form id="controls">
+      <label>Livello <select name="level"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option></select></label>
+      <label>Metro <select name="meter"><option value="">casuale</option><option>2/4</option><option>3/4</option><option>4/4</option><option>6/8</option><option>9/8</option><option>12/8</option></select></label>
+      <label>Battute <select name="measures"><option>2</option><option>4</option><option selected>8</option></select></label>
+      <label>Seed <input name="seed" value="demo" size="10" /></label>
+      <label>Rigo <select name="staff"><option value="percussion">percussione</option><option value="pitched">normale</option></select></label>
+      <label>Larghezza <input name="width" type="number" value="" placeholder="auto" size="5" /></label>
+      <button type="button" id="prev">◀ nota</button>
+      <button type="button" id="next">nota ▶</button>
+      <button type="button" id="random">Seed casuale</button>
+    </form>
+    <div id="out"></div>
+    <pre id="desc"></pre>
+    <script type="module" src="./notationDemo.ts"></script>
+  </body>
+</html>
