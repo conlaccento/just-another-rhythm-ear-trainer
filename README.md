@@ -3,6 +3,8 @@
 Web app per esercitarsi nel dettato ritmico: l'app genera un ritmo, lo studente lo
 ascolta e lo trascrive su carta, poi mostra la soluzione e si autocorregge.
 
+Online: https://conlaccento.github.io/just-another-rhythm-ear-trainer/
+
 ## Comandi
 
 ```sh
@@ -38,3 +40,12 @@ Pagine di sviluppo (solo con `npm run dev`): `/demo/notation.html` (renderer) e
 Aggiungi una voce a `CELLS` in `src/rhythm/cells.ts`. I test verificano
 automaticamente che sia scritta correttamente in ogni posizione possibile e che
 richieda solo elementi selezionabili.
+
+## Pubblicazione
+
+Ogni push su `main` esegue test e build e pubblica `dist/` su GitHub Pages
+(`.github/workflows/deploy.yml`).
+
+## Licenza
+
+[MIT](LICENSE). Dipendenze principali: VexFlow (MIT), Tone.js (MIT), font Jost (OFL).
