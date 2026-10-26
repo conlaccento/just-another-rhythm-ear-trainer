@@ -17,7 +17,7 @@ export const CELLS: readonly CellDef[] = [
   // ---------------------------------------------------------------- simple meters
   // Quarters, halves, wholes and their rests
   { id: 'q', meterKind: 'simple', beats: 1, weight: 10, figures: ['q'] },
-  { id: 'rq', meterKind: 'simple', beats: 1, weight: 2, figures: ['rq'] },
+  { id: 'rq', meterKind: 'simple', beats: 1, weight: 5, figures: ['rq'] },
   { id: 'h', meterKind: 'simple', beats: 2, weight: 5, figures: ['h'], tags: ['cadential'] },
   { id: 'rh', meterKind: 'simple', beats: 2, weight: 1, figures: ['rh'], meters: ['4/4'] },
   { id: 'w', meterKind: 'simple', beats: 4, weight: 2, figures: ['w'], meters: ['4/4'], tags: ['cadential'] },
