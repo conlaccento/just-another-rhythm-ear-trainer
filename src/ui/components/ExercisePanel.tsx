@@ -4,6 +4,7 @@ import type { RenderHandle } from '../../notation';
 import type { ExerciseAction, ExerciseState } from '../exercise/exercise';
 import { usePlayer } from '../hooks/usePlayer';
 import type { Settings } from '../settings/settings';
+import { BpmInput } from './BpmInput';
 import { Notation } from './Notation';
 
 interface ExercisePanelProps {
@@ -13,6 +14,7 @@ interface ExercisePanelProps {
   readonly exercise: ExerciseState;
   readonly dispatch: Dispatch<ExerciseAction>;
   readonly onNewExercise: () => void;
+  readonly onBpmChange: (bpm: number) => void;
   readonly shareUrl: string;
 }
 
@@ -27,7 +29,7 @@ function keepInView(element: Element | null): void {
 }
 
 /** Exercise flow: listen as often as wanted, reveal the solution when ready, listen again with highlighting. */
-export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onNewExercise, shareUrl }: ExercisePanelProps) {
+export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onNewExercise, onBpmChange, shareUrl }: ExercisePanelProps) {
   const handleRef = useRef<RenderHandle | null>(null);
   const solutionHeadingRef = useRef<HTMLHeadingElement>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -95,8 +97,12 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
             <dd>{rhythm.measures.length}</dd>
           </div>
           <div className="meta-item">
-            <dt>BPM</dt>
-            <dd>{settings.bpm}</dd>
+            <dt>
+              <label htmlFor="exercise-bpm">BPM</label>
+            </dt>
+            <dd>
+              <BpmInput id="exercise-bpm" value={settings.bpm} onChange={onBpmChange} />
+            </dd>
           </div>
         </dl>
       ) : (

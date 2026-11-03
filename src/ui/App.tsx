@@ -69,6 +69,7 @@ export function App() {
           exercise={exercise}
           dispatch={dispatch}
           onNewExercise={() => dispatch({ type: 'new', seed: newSeed() })}
+          onBpmChange={(bpm) => update({ bpm })}
           shareUrl={shareUrl}
         />
         <aside className="settings" aria-labelledby="settings-title">

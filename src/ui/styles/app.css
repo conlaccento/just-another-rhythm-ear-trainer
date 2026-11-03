@@ -314,6 +314,31 @@ select {
   line-height: 1.1;
 }
 
+/* Editable value that looks exactly like the read-only ones. */
+.meta-input {
+  width: 3ch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.meta-input::-webkit-outer-spin-button,
+.meta-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.meta-input:focus-visible {
+  outline-offset: 2px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
