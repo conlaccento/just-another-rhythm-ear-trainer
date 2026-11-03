@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import { meterKey, TICKS_PER_QUARTER, type Rhythm, type TimeSignature } from '../rhythm';
-import { createInstruments, type Instruments } from './instruments';
+import { CLICK_LEVEL, createInstruments, type Instruments } from './instruments';
 import { buildTimeline, metronomeLoop, quarterBpm, type TimelineOptions } from './timeline';
 
 /** `metronome`: the metronome alone, looping until stopped. */
@@ -79,6 +79,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
       if (run !== generation) return 'stopped';
       instruments ??= createInstruments();
       const voice = instruments;
+      voice.setClickLevel(CLICK_LEVEL.withRhythm);
       const timeline = buildTimeline(rhythm, options);
       const transport = Tone.getTransport();
       const draw = Tone.getDraw();
@@ -119,6 +120,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
       if (run !== generation) return;
       instruments ??= createInstruments();
       const voice = instruments;
+      voice.setClickLevel(CLICK_LEVEL.solo);
       transport.stop();
       transport.cancel(0);
       transport.position = 0;
