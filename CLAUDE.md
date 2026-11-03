@@ -21,5 +21,5 @@ Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then r
 
 ## Product rules (confirmed by the owner)
 - UI text in Italian; English strings get `lang="en"`.
-- No difficulty levels, no listen limit/counter, no timbre or staff choice (always snare on a one-line percussion staff).
+- No difficulty levels, no listen limit/counter, no timbre or staff choice (always a synthesized piano-like A4 held for the note length, on a one-line percussion staff).
 - Bauhaus style: flat red/yellow/blue on paper, sharp corners, Jost font.

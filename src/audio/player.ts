@@ -73,7 +73,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
         transport.schedule((time) => voice.click(time, click.accent), click.time);
       }
       for (const note of timeline.notes) {
-        transport.schedule((time) => voice.note(time), note.time);
+        transport.schedule((time) => voice.note(time, note.duration), note.time);
       }
       for (const h of timeline.highlights) {
         transport.schedule((time) => draw.schedule(() => callbacks.onEvent?.(h.index), time), h.time);

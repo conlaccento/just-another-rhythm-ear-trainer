@@ -31,7 +31,7 @@ Pagine di sviluppo (solo con `npm run dev`): `/demo/notation.html` (renderer) e
 - `src/notation/` — renderer VexFlow: a capo responsive, travature per movimento,
   terzine/sestine/duine/quartine, legature, evidenziazione della nota corrente sull'SVG.
 - `src/audio/` — player Tone.js: timeline pura (`timeline.ts`) e scheduling su
-  `Tone.Transport`, callback grafiche via `Tone.Draw`. Suono: rullante; metronomo: click.
+  `Tone.Transport`, callback grafiche via `Tone.Draw`. Suono: LA centrale (A4) dal timbro pianistico, sintetizzato in FM, tenuto per la durata della figura; metronomo: click.
 - `src/ui/` — interfaccia React: flusso dell'esercizio, impostazioni (localStorage),
   esercizio condivisibile via URL (`?seed=…&f=…&t=…&n=…&bpm=…`).
 
