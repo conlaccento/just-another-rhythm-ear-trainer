@@ -10,6 +10,7 @@ import {
   type ElementStatus,
   type FigureSelection,
 } from '../../rhythm';
+import { METERS_FIELDSET_ID, meterOptionId } from '../focusField';
 import { MAX_CUSTOM_METERS } from '../settings/settings';
 import { ELEMENT_ICONS } from '../figureIcons';
 import { FigureIcon } from './FigureIcon';
@@ -180,7 +181,7 @@ export function FigurePicker({ selection, customMeters, onChange }: FigurePicker
         );
       })}
 
-      <fieldset className="picker-group">
+      <fieldset className="picker-group" id={METERS_FIELDSET_ID}>
         <legend>Tempi</legend>
         <ul className="options options-meters" role="list">
           {allMeters.map((meter) => {
@@ -192,6 +193,7 @@ export function FigurePicker({ selection, customMeters, onChange }: FigurePicker
               <li key={meter} className={custom ? 'meter-custom' : undefined}>
                 <label className="option option-meter" data-checked={checked} data-warning={unusable}>
                   <input
+                    id={meterOptionId(meter)}
                     type="checkbox"
                     checked={checked}
                     onChange={(e) => setMeters(toggle(selection.meters, meter, e.target.checked))}

@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { MAX_BPM, MIN_BPM } from '../../audio';
+import { MEASURES_FIELD_ID } from '../focusField';
 import { MEASURE_OPTIONS, type MeasureCount, type Settings } from '../settings/settings';
 
 interface PlaybackSettingsProps {
@@ -16,7 +17,7 @@ export function PlaybackSettings({ settings, onChange }: PlaybackSettingsProps) 
       <div className="settings-grid">
         <label className="field">
           <span>Battute</span>
-          <select value={settings.measures} onChange={(e) => onChange({ measures: Number(e.target.value) as MeasureCount })}>
+          <select id={MEASURES_FIELD_ID} value={settings.measures} onChange={(e) => onChange({ measures: Number(e.target.value) as MeasureCount })}>
             {MEASURE_OPTIONS.map((n) => (
               <option key={n} value={n}>
                 {n}

@@ -4,6 +4,7 @@ import type { RenderHandle } from '../../notation';
 import type { ExerciseAction, ExerciseState } from '../exercise/exercise';
 import { usePlayer } from '../hooks/usePlayer';
 import type { Settings } from '../settings/settings';
+import { focusField, MEASURES_FIELD_ID, METERS_FIELDSET_ID, meterOptionId } from '../focusField';
 import { BpmInput } from './BpmInput';
 import { Notation } from './Notation';
 
@@ -76,6 +77,13 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
 
   const description = rhythm ? describeRhythm(rhythm) : [];
 
+  // The summary values lead to the settings that change them.
+  const editMeter = (meter: string): void => {
+    const option = document.getElementById(meterOptionId(meter));
+    focusField(option ?? document.getElementById(METERS_FIELDSET_ID)?.querySelector('input') ?? null);
+  };
+  const editMeasures = (): void => focusField(document.getElementById(MEASURES_FIELD_ID));
+
   return (
     <section className="exercise" aria-labelledby="exercise-title">
       <h2 id="exercise-title" className="heading heading-square">
@@ -88,13 +96,23 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
 
       {rhythm ? (
         <dl className="exercise-meta">
-          <div className="meta-item">
+          <div className="meta-item meta-item-link">
             <dt>Tempo</dt>
-            <dd>{meterKey(rhythm.timeSignature)}</dd>
+            <dd>
+              <button type="button" className="meta-link" onClick={() => editMeter(meterKey(rhythm.timeSignature))}>
+                {meterKey(rhythm.timeSignature)}
+                <span className="visually-hidden">, modifica i tempi</span>
+              </button>
+            </dd>
           </div>
-          <div className="meta-item">
+          <div className="meta-item meta-item-link">
             <dt>{rhythm.measures.length === 1 ? 'Battuta' : 'Battute'}</dt>
-            <dd>{rhythm.measures.length}</dd>
+            <dd>
+              <button type="button" className="meta-link" onClick={editMeasures}>
+                {rhythm.measures.length}
+                <span className="visually-hidden">, modifica il numero di battute</span>
+              </button>
+            </dd>
           </div>
           <div className="meta-item">
             <dt>

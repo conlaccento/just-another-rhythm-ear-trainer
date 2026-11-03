@@ -314,6 +314,42 @@ select {
   line-height: 1.1;
 }
 
+/* Summary values that lead to their setting: the button covers the whole box. */
+.meta-item-link {
+  position: relative;
+}
+
+.meta-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meta-link::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+}
+
+.meta-item-link:hover {
+  background: var(--surface);
+}
+
+.meta-link:focus-visible {
+  outline: none;
+}
+
+.meta-item-link:has(.meta-link:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
 /* Editable value that looks exactly like the read-only ones. */
 .meta-input {
   width: 3ch;
@@ -553,6 +589,19 @@ select {
   outline-offset: 3px;
 }
 .option input:focus-visible {
+  outline: none;
+}
+
+/* Focus moved by script after a mouse click (see focusField.ts): keep the ring visible. */
+[data-focus-ring]:focus {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.option:has(input[data-focus-ring]:focus) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.option input[data-focus-ring]:focus {
   outline: none;
 }
 
