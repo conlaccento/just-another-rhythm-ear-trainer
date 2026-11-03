@@ -255,6 +255,37 @@ select {
   color: var(--on-accent-soft);
 }
 
+/* Toggle button: the square fills when on, so the state is not conveyed by colour alone. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.toggle::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+}
+
+.toggle[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.toggle[aria-pressed='true']::before {
+  background: currentColor;
+}
+
+@media (forced-colors: active) {
+  .toggle[aria-pressed='true']::before {
+    background: ButtonText;
+  }
+}
+
 .primary:disabled,
 .secondary:disabled {
   opacity: 0.45;

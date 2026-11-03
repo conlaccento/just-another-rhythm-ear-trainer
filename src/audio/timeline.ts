@@ -1,4 +1,4 @@
-import { flattenRhythm, measureBeats, measureTicks, pulseTicks, type Rhythm } from '../rhythm';
+import { flattenRhythm, measureBeats, measureTicks, pulseTicks, TICKS_PER_QUARTER, type Rhythm, type TimeSignature } from '../rhythm';
 
 export const MIN_BPM = 40;
 export const MAX_BPM = 160;
@@ -94,4 +94,31 @@ export function buildTimeline(rhythm: Rhythm, options: TimelineOptions): Timelin
     startTime,
     endTime: startTime + rhythm.measures.length * barSeconds,
   };
+}
+
+/** One click of a metronome measure, at a tick offset from the downbeat. */
+export interface MetronomeClick {
+  readonly tick: number;
+  readonly accent: boolean;
+}
+
+/** Looping metronome for a meter: one click per beat (per group in additive and free meters). */
+export interface MetronomeLoop {
+  readonly measureTicks: number;
+  readonly clicks: readonly MetronomeClick[];
+}
+
+export function metronomeLoop(ts: TimeSignature): MetronomeLoop {
+  return {
+    measureTicks: measureTicks(ts),
+    clicks: measureBeats(ts).map((b, i) => ({ tick: b.start, accent: i === 0 })),
+  };
+}
+
+/**
+ * Quarter notes per minute for a BPM setting (see `TimelineOptions.bpm`), e.g.
+ * 60 in 6/8 (dotted quarters) is 90 quarters, 120 in 7/8 (eighths) is 60 quarters.
+ */
+export function quarterBpm(ts: TimeSignature, bpm: number): number {
+  return (clampBpm(bpm) * pulseTicks(ts)) / TICKS_PER_QUARTER;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseFigures, parseMeter, type CellFigure, type Rhythm } from '../rhythm';
-import { buildTimeline, clampBpm } from './timeline';
+import { buildTimeline, clampBpm, metronomeLoop, quarterBpm } from './timeline';
 
 function rhythmOf(meter: string, ...measures: CellFigure[][]): Rhythm {
   let id = 0;
@@ -87,5 +87,27 @@ describe('buildTimeline in additive meters', () => {
     expect(t.startTime).toBeCloseTo(bar);
     expect(t.clicks.map((c) => c.time - t.startTime)).toEqual([0, 1.5, 2.5].map((x) => expect.closeTo(x, 9)));
     expect(t.notes.map((n) => n.time - t.startTime)).toEqual([0, 0.5, 1, 1.5, 2.5].map((x) => expect.closeTo(x, 9)));
+  });
+});
+
+describe('metronome loop', () => {
+  it('clicks on every beat or group, accenting the downbeat', () => {
+    expect(metronomeLoop(parseMeter('3/4'))).toEqual({
+      measureTicks: 144,
+      clicks: [
+        { tick: 0, accent: true },
+        { tick: 48, accent: false },
+        { tick: 96, accent: false },
+      ],
+    });
+    expect(metronomeLoop(parseMeter('3+2+2/8')).clicks.map((c) => c.tick)).toEqual([0, 72, 120]);
+  });
+
+  it('converts the BPM setting to quarter notes per minute', () => {
+    expect(quarterBpm(parseMeter('4/4'), 72)).toBe(72);
+    expect(quarterBpm(parseMeter('6/8'), 60)).toBe(90);
+    expect(quarterBpm(parseMeter('7/8'), 120)).toBe(60);
+    expect(quarterBpm(parseMeter('11/16'), 160)).toBe(40);
+    expect(quarterBpm(parseMeter('4/4'), 500)).toBe(160);
   });
 });

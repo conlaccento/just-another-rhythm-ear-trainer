@@ -34,17 +34,36 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
   const handleRef = useRef<RenderHandle | null>(null);
   const solutionHeadingRef = useRef<HTMLHeadingElement>(null);
   const [announcement, setAnnouncement] = useState('');
-  const { state: playerState, play, stop } = usePlayer((index) => {
+  const { state: playerState, play, metronome, stop, stopDictation } = usePlayer((index) => {
     const handle = handleRef.current;
     if (!handle) return;
     handle.highlight(index);
     if (index !== null) keepInView(handle.svg.querySelector('.vf-marker'));
   });
-  const playing = playerState !== 'idle';
+  const playing = playerState === 'count-in' || playerState === 'playing';
+  const metronomeOn = playerState === 'metronome';
   const revealed = exercise.phase === 'revealed';
+  const meter = rhythm ? meterKey(rhythm.timeSignature) : null;
 
-  // A new or regenerated exercise must not keep sounding.
-  useEffect(() => stop, [rhythm, stop]);
+  // A new or regenerated exercise must not keep sounding (the metronome alone may go on).
+  useEffect(() => stopDictation, [rhythm, stopDictation]);
+
+  // The running metronome follows tempo and meter changes.
+  const timeSignature = rhythm?.timeSignature;
+  useEffect(() => {
+    if (metronomeOn && timeSignature) void metronome(timeSignature, settings.bpm);
+    // Keyed on the meter text, not the object: a new exercise in the same meter keeps the loop going.
+  }, [metronomeOn, meter, settings.bpm, metronome]);
+
+  const onMetronome = (): void => {
+    if (metronomeOn) {
+      stop();
+      setAnnouncement('Metronomo fermato.');
+      return;
+    }
+    if (!rhythm) return;
+    void metronome(rhythm.timeSignature, settings.bpm);
+  };
 
   const onListen = async (): Promise<void> => {
     if (playing) {
@@ -147,10 +166,26 @@ export function ExercisePanel({ rhythm, error, settings, exercise, dispatch, onN
         <button type="button" className="secondary" onClick={onNewExercise}>
           Nuovo esercizio
         </button>
+        <button
+          type="button"
+          className="secondary toggle"
+          aria-pressed={metronomeOn}
+          onClick={onMetronome}
+          disabled={!rhythm}
+          aria-describedby="playback-status"
+        >
+          Solo metronomo
+        </button>
       </div>
 
       <p id="playback-status" className="playback-status">
-        {playerState === 'count-in' ? 'Attacco del metronomo…' : playerState === 'playing' ? 'Dettato in corso…' : ''}
+        {playerState === 'count-in'
+          ? 'Attacco del metronomo…'
+          : playerState === 'playing'
+            ? 'Dettato in corso…'
+            : metronomeOn && meter
+              ? `Metronomo in ${meter} a ${settings.bpm} BPM…`
+              : ''}
       </p>
       <p className="visually-hidden" role="status" aria-live="polite">
         {announcement}

@@ -38,6 +38,8 @@ Pagine di sviluppo (solo con `npm run dev`): `/demo/notation.html` (renderer) e
   terzine/sestine/duine/quartine, legature, evidenziazione della nota corrente sull'SVG.
 - `src/audio/` — player Tone.js: timeline pura (`timeline.ts`) e scheduling su
   `Tone.Transport`, callback grafiche via `Tone.Draw`. Suono: LA centrale (A4) dal timbro pianistico, sintetizzato in FM, tenuto per la durata della figura; metronomo: click.
+  Il pulsante "Solo metronomo" fa girare in loop il metronomo nel tempo dell'esercizio,
+  seguendo in diretta i cambi di BPM.
 - `src/ui/` — interfaccia React: flusso dell'esercizio, impostazioni (localStorage),
   esercizio condivisibile via URL (`?seed=…&f=…&t=…&n=…&bpm=…`).
 

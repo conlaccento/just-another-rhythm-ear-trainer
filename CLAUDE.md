@@ -19,6 +19,7 @@ Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then r
 - Changes to the generator must keep standard-meter output identical for a given seed (shared links): compare a dump of many seeds before and after.
 - Import VexFlow from `vexflow/bravura`; the notation module is lazy-loaded (`src/ui/fonts.ts`) to keep the initial bundle small.
 - All audio scheduling goes through `Tone.Transport`; visual callbacks via `Tone.Draw`.
+- Dictation is scheduled in seconds at a fixed Transport tempo; the "Solo metronomo" loop is scheduled in Transport ticks so BPM changes apply live (`quarterBpm` converts the BPM setting). `play()` resets `transport.bpm`.
 - Settings storage key `dettato-ritmico:settings:v2` is kept on purpose despite the rename; wrap every localStorage access in try/catch.
 
 ## Product rules (confirmed by the owner)
