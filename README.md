@@ -24,7 +24,13 @@ Pagine di sviluppo (solo con `npm run dev`): `/demo/notation.html` (renderer) e
   - `cells.ts`: catalogo delle celle ritmiche (solo dati). Gli elementi richiesti da
     ogni cella (figure, pause, gruppi irregolari, legature, sincopi) sono ricavati
     automaticamente dalla sua figurazione.
-  - `elements.ts`: elementi selezionabili dall'utente e tempi disponibili.
+  - `elements.ts`: elementi selezionabili dall'utente e tempi predefiniti.
+  - `meters.ts`: tempi e griglia dei movimenti. Oltre ai predefiniti l'utente può
+    aggiungere tempi personalizzati: n/4 (semplici), n/8 in gruppi da 3 (composti),
+    n/8 asimmetrici in gruppi da 2 e 3 (automatici, es. 7/8 = 2+2+3, o espliciti,
+    es. 3+2+2/8: ogni gruppo prende una cella da un movimento del tipo giusto),
+    n/16 (gruppi da 2 e 3 semicrome riempiti con figure casuali). Nei tempi
+    asimmetrici e in sedicesimi il BPM si riferisce alla croma o alla semicroma.
   - `generator.ts`: estrazione pesata con seed; usa solo celle che lasciano la
     battuta completabile. `rules.ts` contiene le regole configurabili.
   - `validate.ts`: regole di scrittura vincolanti, usate dai test.

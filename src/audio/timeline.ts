@@ -1,15 +1,19 @@
-import { beatTicks, beatsPerMeasure, flattenRhythm, measureTicks, type Rhythm } from '../rhythm';
+import { flattenRhythm, measureBeats, measureTicks, pulseTicks, type Rhythm } from '../rhythm';
 
 export const MIN_BPM = 40;
 export const MAX_BPM = 160;
 
 export interface TimelineOptions {
-  /** Beats per minute; the beat is the quarter in simple meters, the dotted quarter in compound ones. */
+  /**
+   * Beats per minute; the beat is the quarter in simple meters, the dotted quarter in
+   * compound ones, the denominator's unit (eighth, sixteenth) in additive and free meters.
+   */
   readonly bpm: number;
   /** Metronome clicks while the rhythm plays (the count-in is always played). */
   readonly metronome: boolean;
 }
 
+/** One click per beat (per group of 2 or 3 units in additive and free meters). */
 export interface ClickEvent {
   readonly time: number;
   /** Downbeat of a measure. */
@@ -31,7 +35,8 @@ export interface HighlightEvent {
 }
 
 export interface Timeline {
-  readonly secondsPerBeat: number;
+  /** Seconds per BPM pulse (see `TimelineOptions.bpm`). */
+  readonly secondsPerPulse: number;
   readonly countInClicks: readonly ClickEvent[];
   readonly clicks: readonly ClickEvent[];
   readonly notes: readonly NoteEvent[];
@@ -57,15 +62,17 @@ export function countInMeasures(beatsInMeasure: number): number {
  */
 export function buildTimeline(rhythm: Rhythm, options: TimelineOptions): Timeline {
   const ts = rhythm.timeSignature;
-  const beats = beatsPerMeasure(ts);
-  const secondsPerBeat = 60 / clampBpm(options.bpm);
-  const secondsPerTick = secondsPerBeat / beatTicks(ts);
+  const beats = measureBeats(ts);
+  const secondsPerPulse = 60 / clampBpm(options.bpm);
+  const secondsPerTick = secondsPerPulse / pulseTicks(ts);
   const barSeconds = measureTicks(ts) * secondsPerTick;
 
   const beatClicks = (from: number, measures: number): ClickEvent[] =>
-    Array.from({ length: measures * beats }, (_, i) => ({ time: from + i * secondsPerBeat, accent: i % beats === 0 }));
+    Array.from({ length: measures }, (_, m) =>
+      beats.map((b, i) => ({ time: from + m * barSeconds + b.start * secondsPerTick, accent: i === 0 })),
+    ).flat();
 
-  const countIn = countInMeasures(beats);
+  const countIn = countInMeasures(beats.length);
   const startTime = countIn * barSeconds;
   const flat = flattenRhythm(rhythm);
 
@@ -79,7 +86,7 @@ export function buildTimeline(rhythm: Rhythm, options: TimelineOptions): Timelin
   });
 
   return {
-    secondsPerBeat,
+    secondsPerPulse,
     countInClicks: beatClicks(0, countIn),
     clicks: options.metronome ? beatClicks(startTime, rhythm.measures.length) : [],
     notes,

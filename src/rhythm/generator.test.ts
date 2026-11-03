@@ -234,3 +234,61 @@ describe('cell catalogue', () => {
     }
   });
 });
+
+describe('custom meters', () => {
+  const CELL_METERS = ['5/4', '7/4', '1/4', '3/8', '15/8', '5/8', '7/8', '3+2+2/8', '2+3+2/8', '11/8', '4/8', '2/8'];
+  const FREE_METERS = ['5/16', '7/16', '6/16', '37/16', '3+2+3/16'];
+
+  it('writes well-formed rhythms in every custom meter', () => {
+    for (const meter of [...CELL_METERS, ...FREE_METERS]) {
+      for (let s = 0; s < 60; s++) {
+        const rhythm = generateRhythm({
+          selection: { elements: ALL_ELEMENTS, meters: [meter] },
+          measures: MEASURE_COUNTS[s % MEASURE_COUNTS.length] ?? 4,
+          seed: `custom-${meter}-${s}`,
+        });
+        expect(meterKey(rhythm.timeSignature)).toBe(meter);
+        expectWellFormed(rhythm, `${meter} ${rhythm.seed}`);
+      }
+    }
+  });
+
+  it('fills each group of an additive meter with a one-beat cell of its family', () => {
+    const ts = parseMeter('3+2+2/8');
+    for (let s = 0; s < 40; s++) {
+      const rhythm = generateRhythm({ selection: FULL, measures: 4, seed: `add-${s}`, timeSignature: ts });
+      for (const measure of rhythm.measures) {
+        const kinds = measure.cellIds.map((id) => CELLS.find((c) => c.id === id)?.meterKind);
+        expect(kinds, rhythm.seed).toEqual(['compound', 'simple', 'simple']);
+      }
+    }
+  });
+
+  it('respects random selections in custom meters', () => {
+    for (const [i, selection] of randomSelections(80).entries()) {
+      const meters = [CELL_METERS[i % CELL_METERS.length] ?? '7/8', FREE_METERS[i % FREE_METERS.length] ?? '7/16'];
+      for (const meter of feasibleMeters({ ...selection, meters })) {
+        const rhythm = generateRhythm({ selection: { ...selection, meters: [meter] }, measures: 4, seed: `rnd-${i}` });
+        expectWellFormed(rhythm, `${meter} ${rhythm.seed}`);
+      }
+    }
+  });
+
+  it('uses only eighth and sixteenth figures in sixteenth meters, starting and ending on a note', () => {
+    const rhythm = generateRhythm({ selection: FULL, measures: 4, seed: 'free', timeSignature: parseMeter('37/16') });
+    const features = rhythmFeatures(rhythm);
+    for (const f of features) expect(['note:sixteenth', 'note:eighth', 'note:eighth.', 'rest:sixteenth', 'rest:eighth']).toContain(f);
+    const flat = flattenRhythm(rhythm);
+    expect(flat[0]?.event.isRest).toBe(false);
+    expect(flat.at(-1)?.event.isRest).toBe(false);
+  });
+
+  it('reports which custom meters a selection can fill', () => {
+    expect(isMeterFeasible(['note:quarter'], parseMeter('5/4'))).toBe(true);
+    expect(isMeterFeasible(['note:quarter'], parseMeter('7/8'))).toBe(false); // the 3-eighth group needs more
+    expect(isMeterFeasible(['note:quarter', 'note:eighth'], parseMeter('7/8'))).toBe(true);
+    expect(isMeterFeasible(['note:quarter'], parseMeter('7/16'))).toBe(false);
+    expect(isMeterFeasible(['note:sixteenth'], parseMeter('7/16'))).toBe(true);
+    expect(isMeterFeasible(['rest:sixteenth', 'note:eighth'], parseMeter('7/16'))).toBe(true);
+  });
+});

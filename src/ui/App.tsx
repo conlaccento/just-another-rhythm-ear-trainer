@@ -77,7 +77,7 @@ export function App() {
             Impostazioni
           </h2>
           <PlaybackSettings settings={settings} onChange={update} />
-          <FigurePicker selection={settings.selection} onChange={(s) => update({ selection: s })} />
+          <FigurePicker selection={settings.selection} customMeters={settings.customMeters} onChange={update} />
         </aside>
       </main>
       <Footer />

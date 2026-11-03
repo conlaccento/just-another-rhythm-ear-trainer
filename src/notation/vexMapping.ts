@@ -1,9 +1,10 @@
 import {
-  beatTicks,
+  beatGrid,
   flattenRhythm,
   measureTicks,
   notatedFigure,
   type BaseFigure,
+  type BeatGrid,
   type PositionedEvent,
   type Rhythm,
 } from '../rhythm';
@@ -63,7 +64,7 @@ function noteSpec(p: PositionedEvent, barTicks: number): NoteSpec {
  * Beams join consecutive eighth-or-shorter notes inside the same beat, so that
  * the beat is always visible. Rests interrupt a beam.
  */
-function beamGroups(events: readonly PositionedEvent[], beat: number): number[][] {
+function beamGroups(events: readonly PositionedEvent[], grid: BeatGrid): number[][] {
   const groups: number[][] = [];
   let current: number[] = [];
   let currentBeat = -1;
@@ -73,7 +74,7 @@ function beamGroups(events: readonly PositionedEvent[], beat: number): number[][
   };
   events.forEach((p, i) => {
     const beamable = !p.event.isRest && BEAMABLE.has(notatedFigure(p.event).base);
-    const beatIndex = Math.floor(p.tickInMeasure / beat);
+    const beatIndex = grid.indexAt(p.tickInMeasure);
     if (!beamable || beatIndex !== currentBeat) flush();
     currentBeat = beatIndex;
     if (beamable) current.push(i);
@@ -101,12 +102,12 @@ function tupletGroups(events: readonly PositionedEvent[], beams: readonly (reado
 
 export function measureSpecs(rhythm: Rhythm): MeasureSpec[] {
   const ts = rhythm.timeSignature;
-  const beat = beatTicks(ts);
+  const grid = beatGrid(ts);
   const barTicks = measureTicks(ts);
   const flat = flattenRhythm(rhythm);
   return rhythm.measures.map((_, m) => {
     const events = flat.filter((p) => p.measureIndex === m);
-    const beams = beamGroups(events, beat);
+    const beams = beamGroups(events, grid);
     return {
       notes: events.map((p) => noteSpec(p, barTicks)),
       beams,

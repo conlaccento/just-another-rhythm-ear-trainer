@@ -1,11 +1,24 @@
-import { useId, useMemo } from 'react';
-import { analyzeSelection, ELEMENTS, getElement, METERS, type ElementCategory, type ElementStatus, type FigureSelection } from '../../rhythm';
+import { useId, useMemo, useState, type FormEvent } from 'react';
+import {
+  analyzeSelection,
+  ELEMENTS,
+  getElement,
+  MAX_NUMERATOR,
+  METERS,
+  normalizeMeter,
+  type ElementCategory,
+  type ElementStatus,
+  type FigureSelection,
+} from '../../rhythm';
+import { MAX_CUSTOM_METERS } from '../settings/settings';
 import { ELEMENT_ICONS } from '../figureIcons';
 import { FigureIcon } from './FigureIcon';
 
 interface FigurePickerProps {
   readonly selection: FigureSelection;
-  readonly onChange: (selection: FigureSelection) => void;
+  /** User-defined meters, listed after the standard ones. */
+  readonly customMeters: readonly string[];
+  readonly onChange: (patch: { selection?: FigureSelection; customMeters?: readonly string[] }) => void;
 }
 
 const CATEGORIES: readonly { id: ElementCategory; title: string }[] = [
@@ -23,6 +36,20 @@ const METER_NAMES: Readonly<Record<string, string>> = {
   '9/8': 'nove ottavi',
   '12/8': 'dodici ottavi',
 };
+
+const UNIT_NAMES: Readonly<Record<string, string>> = { '4': 'quarti', '8': 'ottavi', '16': 'sedicesimi' };
+
+/** Spoken name of a meter, e.g. "sei ottavi" or "3 più 2 più 2 ottavi". */
+function meterName(meter: string): string {
+  const known = METER_NAMES[meter];
+  if (known) return known;
+  const [top = '', den = ''] = meter.split('/');
+  return `${top.split('+').join(' più ')} ${UNIT_NAMES[den] ?? `su ${den}`}`;
+}
+
+const MAX_METERS_TEXT = Object.entries(MAX_NUMERATOR)
+  .map(([den, max]) => `${max}/${den}`)
+  .join(', ');
 
 const COMPOUND_METERS = '6/8, 9/8, 12/8';
 const SIMPLE_METERS = '2/4, 3/4, 4/4';
@@ -54,13 +81,44 @@ function summaryText(feasible: readonly string[], infeasible: readonly string[],
 }
 
 /** Lets the user choose which figures, rests, groups and meters the exercises use. */
-export function FigurePicker({ selection, onChange }: FigurePickerProps) {
+export function FigurePicker({ selection, customMeters, onChange }: FigurePickerProps) {
   const baseId = useId();
   const report = useMemo(() => analyzeSelection(selection), [selection]);
   const selected = new Set(selection.elements);
+  const [meterDraft, setMeterDraft] = useState('');
+  const [meterError, setMeterError] = useState<string | null>(null);
+  const allMeters = [...METERS, ...customMeters];
 
-  const setElements = (elements: string[]): void => onChange({ ...selection, elements });
-  const setMeters = (meters: string[]): void => onChange({ ...selection, meters: METERS.filter((m) => meters.includes(m)) });
+  const setElements = (elements: string[]): void => onChange({ selection: { ...selection, elements } });
+  const setMeters = (meters: string[]): void =>
+    onChange({ selection: { ...selection, meters: allMeters.filter((m) => meters.includes(m)) } });
+
+  const addMeter = (e: FormEvent): void => {
+    e.preventDefault();
+    const meter = normalizeMeter(meterDraft);
+    if (!meter) {
+      setMeterError(`Tempo non valido. Esempi: 5/4, 7/8, 3+2+2/8, 11/16 (al massimo ${MAX_METERS_TEXT}; gruppi da 2 o 3).`);
+      return;
+    }
+    const known = allMeters.includes(meter);
+    if (!known && customMeters.length >= MAX_CUSTOM_METERS) {
+      setMeterError(`Puoi aggiungere al massimo ${MAX_CUSTOM_METERS} tempi: rimuovine uno.`);
+      return;
+    }
+    const nextCustom = known ? customMeters : [...customMeters, meter];
+    const order = [...METERS, ...nextCustom];
+    const meters = order.filter((m) => m === meter || selection.meters.includes(m));
+    onChange({ selection: { ...selection, meters }, ...(known ? {} : { customMeters: nextCustom }) });
+    setMeterDraft('');
+    setMeterError(null);
+  };
+
+  const removeMeter = (meter: string): void => {
+    onChange({
+      selection: { ...selection, meters: selection.meters.filter((m) => m !== meter) },
+      customMeters: customMeters.filter((m) => m !== meter),
+    });
+  };
 
   return (
     <section className="picker" aria-labelledby={`${baseId}-title`}>
@@ -125,25 +183,76 @@ export function FigurePicker({ selection, onChange }: FigurePickerProps) {
       <fieldset className="picker-group">
         <legend>Tempi</legend>
         <ul className="options options-meters" role="list">
-          {METERS.map((meter) => {
+          {allMeters.map((meter) => {
             const checked = selection.meters.includes(meter);
             const unusable = checked && report.infeasibleMeters.includes(meter);
+            const custom = !METERS.includes(meter);
             const [num, den] = meter.split('/');
             return (
-              <li key={meter}>
+              <li key={meter} className={custom ? 'meter-custom' : undefined}>
                 <label className="option option-meter" data-checked={checked} data-warning={unusable}>
-                  <input type="checkbox" checked={checked} onChange={(e) => setMeters(toggle(selection.meters, meter, e.target.checked))} />
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => setMeters(toggle(selection.meters, meter, e.target.checked))}
+                  />
                   <span className="meter-glyph" aria-hidden="true">
                     <span>{num}</span>
                     <span>{den}</span>
                   </span>
-                  <span className="visually-hidden">{METER_NAMES[meter] ?? meter}</span>
+                  <span className="visually-hidden">{meterName(meter)}</span>
                   {unusable && <span className="option-hint-inline">non realizzabile</span>}
                 </label>
+                {custom && (
+                  <button
+                    type="button"
+                    className="meter-remove"
+                    aria-label={`Rimuovi il tempo ${meterName(meter)}`}
+                    title="Rimuovi"
+                    onClick={() => removeMeter(meter)}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
+
+        <form className="meter-add" onSubmit={addMeter} noValidate>
+          <label htmlFor={`${baseId}-meter`} className="meter-add-label">
+            Aggiungi un tempo
+          </label>
+          <div className="meter-add-row">
+            <input
+              id={`${baseId}-meter`}
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="7/8 o 3+2+2/8"
+              value={meterDraft}
+              onChange={(e) => {
+                setMeterDraft(e.target.value);
+                setMeterError(null);
+              }}
+              aria-invalid={meterError !== null}
+              aria-describedby={`${baseId}-meter-help${meterError ? ` ${baseId}-meter-error` : ''}`}
+            />
+            <button type="submit" className="secondary">
+              Aggiungi
+            </button>
+          </div>
+          {meterError && (
+            <p id={`${baseId}-meter-error`} className="option-hint" role="alert">
+              {meterError}
+            </p>
+          )}
+          <p id={`${baseId}-meter-help`} className="field-help">
+            Denominatore 4, 8 o 16. In ottavi e sedicesimi i gruppi da 2 e 3 sono automatici (7/8 = 2+2+3), oppure
+            scrivili tu (3+2+2/8). Nei tempi in sedicesimi le figure sono casuali.
+          </p>
+        </form>
       </fieldset>
 
       <p className="picker-summary" role="status" data-error={report.feasibleMeters.length === 0}>

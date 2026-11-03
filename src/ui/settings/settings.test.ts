@@ -10,7 +10,7 @@ describe('parseSettings', () => {
 
   it('keeps valid values and drops unknown elements and meters', () => {
     const parsed = parseSettings({
-      selection: { elements: ['note:eighth', 'bogus', 'group:6:sixteenth'], meters: ['6/8', '5/4'] },
+      selection: { elements: ['note:eighth', 'bogus', 'group:6:sixteenth'], meters: ['6/8', '5/2', '13/4'] },
       measures: 1,
     });
     expect(parsed).toEqual({
@@ -18,6 +18,15 @@ describe('parseSettings', () => {
       selection: { elements: ['note:eighth', 'group:6:sixteenth'], meters: ['6/8'] },
       measures: 1,
     });
+  });
+
+  it('keeps custom meters, canonicalised, and adds selected ones to the list', () => {
+    const parsed = parseSettings({
+      selection: { elements: ['note:quarter'], meters: ['4/4', '2+2+3/8', '3 + 2 + 2/8'] },
+      customMeters: ['5/4', 'bogus', '4/4', '3+3/8', '37/16'],
+    });
+    expect(parsed.selection.meters).toEqual(['4/4', '7/8', '3+2+2/8']);
+    expect(parsed.customMeters).toEqual(['5/4', '37/16', '7/8', '3+2+2/8']);
   });
 
   it('validates tempo and metronome', () => {

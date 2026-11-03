@@ -16,6 +16,13 @@ describe('exercise URL', () => {
     expect(readExerciseFromUrl(search, DEFAULT_SETTINGS)).toEqual({ seed: 'k3x9q2', settings });
   });
 
+  it('round-trips custom meters with readable pluses', () => {
+    const custom: Settings = { ...settings, selection: { ...settings.selection, meters: ['3+2+2/8', '37/16'] }, customMeters: ['3+2+2/8', '37/16'] };
+    const search = exerciseSearch('a', custom);
+    expect(search).toContain('t=3+2+2/8,37/16');
+    expect(readExerciseFromUrl(search, DEFAULT_SETTINGS).settings).toEqual(custom);
+  });
+
   it('keeps the personal metronome setting from the base', () => {
     const base = { ...DEFAULT_SETTINGS, metronome: true };
     const { settings: parsed } = readExerciseFromUrl(exerciseSearch('a', settings), base);
@@ -27,7 +34,7 @@ describe('exercise URL', () => {
   });
 
   it('ignores invalid values', () => {
-    const { seed, settings: parsed } = readExerciseFromUrl('?seed=<script>&n=7&bpm=999&f=bogus&t=5/4', DEFAULT_SETTINGS);
+    const { seed, settings: parsed } = readExerciseFromUrl('?seed=<script>&n=7&bpm=999&f=bogus&t=5/2', DEFAULT_SETTINGS);
     expect(seed).toBeNull();
     expect(parsed.measures).toBe(DEFAULT_SETTINGS.measures);
     expect(parsed.bpm).toBe(DEFAULT_SETTINGS.bpm);

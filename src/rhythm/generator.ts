@@ -1,10 +1,10 @@
 import { CELLS } from './cells';
 import { cellFeatures } from './features';
 import { parseFigures } from './figures';
-import { beatsPerMeasure, meterKey, meterKind, parseMeter, spanRespectsMiddle } from './meters';
-import { createRng, pickOne, pickWeighted } from './random';
+import { beatsPerMeasure, measureBeats, meterKey, meterKind, meterStructure, parseMeter, spanRespectsMiddle } from './meters';
+import { createRng, pickOne, pickWeighted, type Rng } from './random';
 import { DEFAULT_RULES, type GeneratorRules } from './rules';
-import type { CellDef, FigureSelection, Measure, Rhythm, RhythmEvent, TimeSignature } from './types';
+import type { CellDef, FigureSelection, Measure, MeterKind, Rhythm, RhythmEvent, TimeSignature } from './types';
 
 export interface GenerateOptions {
   readonly selection: FigureSelection;
@@ -36,8 +36,14 @@ export interface CompiledCell {
 
 const compiledCache = new WeakMap<readonly CellDef[], Map<string, readonly CompiledCell[]>>();
 
-/** All catalogue cells usable in a meter (ignoring the selection). */
-export function cellsForMeter(ts: TimeSignature, catalogue: readonly CellDef[] = CELLS): readonly CompiledCell[] {
+/** Uniform meters standing in for the beats of additive meters when compiling cells. */
+const PROXY_METERS: Readonly<Record<MeterKind, TimeSignature>> = {
+  simple: parseMeter('2/4'),
+  compound: parseMeter('6/8'),
+};
+
+/** Catalogue cells of a uniform meter (simple or compound). */
+function cellsForUniformMeter(ts: TimeSignature, catalogue: readonly CellDef[]): readonly CompiledCell[] {
   const key = meterKey(ts);
   let byMeter = compiledCache.get(catalogue);
   if (!byMeter) {
@@ -68,6 +74,29 @@ export function cellsForMeter(ts: TimeSignature, catalogue: readonly CellDef[] =
   return compiled;
 }
 
+/**
+ * All catalogue cells usable in a meter (ignoring the selection). Additive meters
+ * use the one-beat cells of each kind of group they contain; free meters use none.
+ */
+export function cellsForMeter(ts: TimeSignature, catalogue: readonly CellDef[] = CELLS): readonly CompiledCell[] {
+  const structure = meterStructure(ts);
+  if (structure === 'free') return [];
+  if (structure !== 'additive') return cellsForUniformMeter(ts, catalogue);
+  const kinds = new Set(measureBeats(ts).map((b) => b.kind));
+  return (['simple', 'compound'] as const)
+    .filter((kind) => kinds.has(kind))
+    .flatMap((kind) => cellsForUniformMeter(PROXY_METERS[kind], catalogue).filter((c) => c.def.beats === 1));
+}
+
+/** Whether `cell` may start at beat `pos` of a measure of `ts`. */
+type Fits = (cell: CompiledCell, pos: number) => boolean;
+
+function fitsFor(ts: TimeSignature): Fits {
+  if (meterStructure(ts) !== 'additive') return (c, pos) => spanRespectsMiddle(ts, pos, c.def.beats);
+  const kinds = measureBeats(ts).map((b) => b.kind);
+  return (c, pos) => c.def.beats === 1 && kinds[pos] === c.def.meterKind;
+}
+
 /** Cells whose required elements are all selected. */
 export function eligibleCells(
   elements: readonly string[],
@@ -78,8 +107,8 @@ export function eligibleCells(
   return cellsForMeter(ts, catalogue).filter((c) => [...c.features].every((f) => selected.has(f)));
 }
 
-/** Memoised check: can beats [from, end) be filled with `cells`, respecting the middle of the measure? */
-function makeCompletable(ts: TimeSignature, cells: readonly CompiledCell[]) {
+/** Memoised check: can beats [from, end) be filled with `cells`, each where it fits? */
+function makeCompletable(fits: Fits, cells: readonly CompiledCell[]) {
   const memo = new Map<string, boolean>();
   const completable = (from: number, end: number): boolean => {
     if (from === end) return true;
@@ -87,7 +116,7 @@ function makeCompletable(ts: TimeSignature, cells: readonly CompiledCell[]) {
     const cached = memo.get(key);
     if (cached !== undefined) return cached;
     const result = cells.some(
-      (c) => from + c.def.beats <= end && spanRespectsMiddle(ts, from, c.def.beats) && completable(from + c.def.beats, end),
+      (c) => from + c.def.beats <= end && fits(c, from) && completable(from + c.def.beats, end),
     );
     memo.set(key, result);
     return result;
@@ -97,10 +126,20 @@ function makeCompletable(ts: TimeSignature, cells: readonly CompiledCell[]) {
 
 /** Whether a whole measure of `ts` can be written with the selected elements. */
 export function isMeterFeasible(elements: readonly string[], ts: TimeSignature, catalogue: readonly CellDef[] = CELLS): boolean {
+  if (meterStructure(ts) === 'free') return isFreeMeterFeasible(elements, ts);
   const cells = eligibleCells(elements, ts, catalogue);
   const beats = beatsPerMeasure(ts);
   const hasNotes = cells.some((c) => [...c.features].some((f) => f.startsWith('note:') || f.startsWith('group:')));
-  return hasNotes && makeCompletable(ts, cells)(0, beats);
+  return hasNotes && makeCompletable(fitsFor(ts), cells)(0, beats);
+}
+
+/** Elements that can actually appear in `ts` with the selected elements (empty when the meter is not feasible). */
+export function usableElements(elements: readonly string[], ts: TimeSignature, catalogue: readonly CellDef[] = CELLS): Set<string> {
+  if (!isMeterFeasible(elements, ts, catalogue)) return new Set();
+  if (meterStructure(ts) === 'free') {
+    return new Set(freeGroupLengths(ts).flatMap((len) => freePatterns(elements, len).flatMap((p) => p.map((t) => t.element))));
+  }
+  return new Set(eligibleCells(elements, ts, catalogue).flatMap((c) => [...c.features]));
 }
 
 export function feasibleMeters(selection: FigureSelection, catalogue: readonly CellDef[] = CELLS): string[] {
@@ -127,13 +166,15 @@ export function generateRhythm(options: GenerateOptions): Rhythm {
   }
   const key = meterKey(ts);
   const beats = beatsPerMeasure(ts);
-  if (!Number.isInteger(beats)) throw new Error(`Unsupported meter: ${key}`);
   if (!isMeterFeasible(selection.elements, ts, catalogue)) {
     throw new GenerationError(`Il tempo ${key} non si può scrivere con le figure scelte.`);
   }
 
+  if (meterStructure(ts) === 'free') return generateFreeRhythm(selection, measureCount, ts, rng, seed, rules);
+
   const pool = eligibleCells(selection.elements, ts, catalogue);
-  const completable = makeCompletable(ts, pool);
+  const fits = fitsFor(ts);
+  const completable = makeCompletable(fits, pool);
   const used = new Set<string>();
 
   /** Some cell able to receive a tie fits at `pos` and the measure can still be completed. */
@@ -142,7 +183,7 @@ export function generateRhythm(options: GenerateOptions): Rhythm {
       (c) =>
         c.canReceiveTie &&
         pos + c.def.beats <= end &&
-        spanRespectsMiddle(ts, pos, c.def.beats) &&
+        fits(c, pos) &&
         completable(pos + c.def.beats, end),
     );
 
@@ -168,7 +209,7 @@ export function generateRhythm(options: GenerateOptions): Rhythm {
           return (
             c.cadential &&
             start >= 0 &&
-            spanRespectsMiddle(ts, start, c.def.beats) &&
+            fits(c, start) &&
             completable(0, start) &&
             (start > 0 || !pendingTie || c.canReceiveTie)
           );
@@ -184,7 +225,7 @@ export function generateRhythm(options: GenerateOptions): Rhythm {
       // Hard constraints: the result must stay valid and completable.
       const valid = pool.filter((c) => {
         const cellEnd = pos + c.def.beats;
-        if (cellEnd > end || !spanRespectsMiddle(ts, pos, c.def.beats) || !completable(cellEnd, end)) return false;
+        if (cellEnd > end || !fits(c, pos) || !completable(cellEnd, end)) return false;
         if (pendingTie && !c.canReceiveTie) return false;
         if (c.tieOut) {
           if (cellEnd === beats) return !isLast && barlineTieAllowed && tieTargetAt(0, beats);
@@ -230,5 +271,92 @@ export function generateRhythm(options: GenerateOptions): Rhythm {
     measures.push({ events, cellIds: placed.map((c) => c.def.id) });
   }
 
+  return { timeSignature: ts, measures, elements: selection.elements, seed };
+}
+
+// ------------------------------------------------------------------ free meters
+
+/** A figure that free meters (sixteenth denominators) may use, with the element it requires. */
+interface FreeToken {
+  readonly token: string;
+  readonly ticks: number;
+  readonly element: string;
+  readonly isRest: boolean;
+}
+
+const FREE_TOKENS: readonly FreeToken[] = [
+  { token: '16', ticks: 12, element: 'note:sixteenth', isRest: false },
+  { token: '8', ticks: 24, element: 'note:eighth', isRest: false },
+  { token: '8.', ticks: 36, element: 'note:eighth.', isRest: false },
+  { token: 'r16', ticks: 12, element: 'rest:sixteenth', isRest: true },
+  { token: 'r8', ticks: 24, element: 'rest:eighth', isRest: true },
+];
+
+/** Weight of a group containing a rest, relative to a group of notes only. */
+const FREE_REST_WEIGHT = 0.35;
+
+function freeGroupLengths(ts: TimeSignature): number[] {
+  return [...new Set(measureBeats(ts).map((b) => b.ticks))];
+}
+
+/**
+ * Every way of writing one group of `length` ticks with the selected figures.
+ * Consecutive rests are excluded (they would be written as one longer rest), so a
+ * group is never entirely silent unless it is a single rest.
+ */
+function freePatterns(elements: readonly string[], length: number): FreeToken[][] {
+  const selected = new Set(elements);
+  const tokens = FREE_TOKENS.filter((t) => selected.has(t.element));
+  const result: FreeToken[][] = [];
+  const extend = (prefix: FreeToken[], left: number): void => {
+    if (left === 0) {
+      result.push(prefix);
+      return;
+    }
+    for (const t of tokens) {
+      if (t.ticks > left || (t.isRest && prefix.at(-1)?.isRest)) continue;
+      extend([...prefix, t], left - t.ticks);
+    }
+  };
+  extend([], length);
+  return result;
+}
+
+function isFreeMeterFeasible(elements: readonly string[], ts: TimeSignature): boolean {
+  const patterns = freeGroupLengths(ts).map((len) => freePatterns(elements, len));
+  return patterns.every((p) => p.length > 0) && patterns.some((p) => p.some((tokens) => tokens.some((t) => !t.isRest)));
+}
+
+/**
+ * Sixteenth meters: each 2- or 3-sixteenth group gets a random pattern of the
+ * selected figures. The exercise starts and ends with a note whenever possible.
+ */
+function generateFreeRhythm(
+  selection: FigureSelection,
+  measureCount: number,
+  ts: TimeSignature,
+  rng: Rng,
+  seed: string,
+  rules: GeneratorRules,
+): Rhythm {
+  const beats = measureBeats(ts);
+  const measures: Measure[] = [];
+  for (let m = 0; m < measureCount; m++) {
+    const events: RhythmEvent[] = [];
+    const cellIds: string[] = [];
+    beats.forEach((beat, b) => {
+      const all = freePatterns(selection.elements, beat.ticks);
+      const first = m === 0 && b === 0 && rules.firstEventIsNote;
+      const last = m === measureCount - 1 && b === beats.length - 1;
+      const preferred = all.filter((p) => (!first || !p[0]?.isRest) && (!last || !p.at(-1)?.isRest));
+      const pattern = pickWeighted(rng, preferred.length > 0 ? preferred : all, (p) =>
+        p.some((t) => t.isRest) ? FREE_REST_WEIGHT : 1,
+      );
+      if (!pattern) throw new GenerationError(`Il tempo ${meterKey(ts)} non si può scrivere con le figure scelte.`);
+      events.push(...parseFigures(pattern.map((t) => t.token), () => 0));
+      cellIds.push(`free:${pattern.map((t) => t.token).join('-')}`);
+    });
+    measures.push({ events, cellIds });
+  }
   return { timeSignature: ts, measures, elements: selection.elements, seed };
 }

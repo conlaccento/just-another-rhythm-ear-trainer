@@ -72,3 +72,20 @@ describe('buildTimeline', () => {
   });
 
 });
+
+describe('buildTimeline in additive meters', () => {
+  it('reads the BPM as eighths and clicks on every group', () => {
+    // 3+2+2/8 at 120 eighths per minute: one eighth = 0.5 s.
+    const t = buildTimeline(rhythmOf('3+2+2/8', ['8', '8', '8', 'q', 'q']), { bpm: 120, metronome: true });
+    expect(t.secondsPerPulse).toBe(0.5);
+    const bar = 7 * 0.5;
+    expect(t.countInClicks.map((c) => [c.time, c.accent])).toEqual([
+      [0, true],
+      [1.5, false],
+      [2.5, false],
+    ]);
+    expect(t.startTime).toBeCloseTo(bar);
+    expect(t.clicks.map((c) => c.time - t.startTime)).toEqual([0, 1.5, 2.5].map((x) => expect.closeTo(x, 9)));
+    expect(t.notes.map((n) => n.time - t.startTime)).toEqual([0, 0.5, 1, 1.5, 2.5].map((x) => expect.closeTo(x, 9)));
+  });
+});

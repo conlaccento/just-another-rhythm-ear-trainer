@@ -1,9 +1,17 @@
 /** Simple meters have a quarter-note beat, compound meters a dotted-quarter beat. */
 export type MeterKind = 'simple' | 'compound';
 
+/** How a meter is generated (see `meterStructure` in `meters.ts`). */
+export type MeterStructure = 'simple' | 'compound' | 'additive' | 'free';
+
 export interface TimeSignature {
   readonly numerator: number;
   readonly denominator: number;
+  /**
+   * Explicit grouping in denominator units (e.g. [3, 2, 2] for 3+2+2/8), only when it
+   * differs from the default one; eighth and sixteenth meters only.
+   */
+  readonly groups?: readonly number[];
 }
 
 /** Tuplet membership: events sharing the same `id` form one tuplet group. */

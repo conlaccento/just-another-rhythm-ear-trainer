@@ -1,23 +1,30 @@
 import { rhythmFeatures, syncopationIndices } from './features';
 import { figureFromTicks, notatedTicks } from './figures';
 import { flattenRhythm, type PositionedEvent } from './flatten';
-import { beatTicks, beatsPerMeasure, measureTicks, meterKind, spanRespectsMiddle } from './meters';
+import { beatGrid, isUniformMeter, measureBeats, measureTicks, meterStructure, spanRespectsMiddle, type BeatGrid } from './meters';
 import type { Rhythm, TimeSignature } from './types';
 
-const sameBeat = (start: number, end: number, beat: number): boolean =>
-  Math.floor(start / beat) === Math.floor((end - 1) / beat);
+const sameBeat = (grid: BeatGrid, start: number, end: number): boolean => grid.indexAt(start) === grid.indexAt(end - 1);
+
+/** Starts and ends on beat boundaries; in uniform meters it must also respect the middle of the measure. */
+function spansWholeBeats(ts: TimeSignature, grid: BeatGrid, start: number, end: number): boolean {
+  if (!grid.isBeatStart(start) || !(end === measureTicks(ts) || grid.isBeatStart(end))) return false;
+  if (!isUniformMeter(ts)) return true;
+  const beat = measureBeats(ts)[0]?.ticks ?? 1;
+  return spanRespectsMiddle(ts, start / beat, (end - start) / beat);
+}
 
 /**
  * Whether a note is grouped so that every beat stays visible: it lies inside one
  * beat, or spans whole beats, or is one of the standard exceptions in simple meters
  * (dotted quarter on the beat; quarter in the eighth–quarter–eighth syncopation).
  */
-function noteGroupingOk(ts: TimeSignature, start: number, end: number): boolean {
-  const beat = beatTicks(ts);
-  if (sameBeat(start, end, beat)) return true;
+function noteGroupingOk(ts: TimeSignature, grid: BeatGrid, start: number, end: number): boolean {
+  if (sameBeat(grid, start, end)) return true;
+  if (grid.isBeatStart(start) && (end === measureTicks(ts) || grid.isBeatStart(end))) return spansWholeBeats(ts, grid, start, end);
+  if (meterStructure(ts) !== 'simple') return false;
+  const beat = measureBeats(ts)[0]?.ticks ?? 1;
   const startBeat = Math.floor(start / beat);
-  if (start % beat === 0 && end % beat === 0) return spanRespectsMiddle(ts, startBeat, (end - start) / beat);
-  if (meterKind(ts) !== 'simple') return false;
   const length = end - start;
   const dottedQuarterOnBeat = start % beat === 0 && length === beat * 1.5;
   const syncopatedQuarter = start % beat === beat / 2 && length === beat;
@@ -28,18 +35,20 @@ function noteGroupingOk(ts: TimeSignature, start: number, end: number): boolean 
  * Rests are written beat by beat. Allowed exceptions: a full-measure rest and,
  * in four-beat meters, a two-beat rest on beat 1 or 3.
  */
-function restGroupingOk(ts: TimeSignature, start: number, end: number): boolean {
-  const beat = beatTicks(ts);
-  if (sameBeat(start, end, beat)) return true;
+function restGroupingOk(ts: TimeSignature, grid: BeatGrid, start: number, end: number): boolean {
+  if (sameBeat(grid, start, end)) return true;
   if (start === 0 && end === measureTicks(ts)) return true;
-  return beatsPerMeasure(ts) === 4 && end - start === 2 * beat && (start === 0 || start === 2 * beat);
+  if (!isUniformMeter(ts)) return false;
+  const beat = measureBeats(ts)[0]?.ticks ?? 1;
+  return measureBeats(ts).length === 4 && end - start === 2 * beat && (start === 0 || start === 2 * beat);
 }
 
 /** Checks the binding writing rules; returns human-readable violations (empty when valid). */
 export function validateRhythm(rhythm: Rhythm): string[] {
   const ts = rhythm.timeSignature;
   const barTicks = measureTicks(ts);
-  const beat = beatTicks(ts);
+  const grid = beatGrid(ts);
+  const beats = measureBeats(ts);
   const errors: string[] = [];
   const lastMeasure = rhythm.measures.length - 1;
 
@@ -60,7 +69,7 @@ export function validateRhythm(rhythm: Rhythm): string[] {
 
     // Tuplet members are checked as a whole group below.
     const groupingOk =
-      event.tuplet !== undefined || (event.isRest ? restGroupingOk(ts, start, end) : noteGroupingOk(ts, start, end));
+      event.tuplet !== undefined || (event.isRest ? restGroupingOk(ts, grid, start, end) : noteGroupingOk(ts, grid, start, end));
     if (!groupingOk) errors.push(`${where}: ${event.isRest ? 'rest' : 'note'} hides a beat`);
 
     if (event.tiedToNext) {
@@ -76,8 +85,8 @@ export function validateRhythm(rhythm: Rhythm): string[] {
     }
   });
 
-  // Tuplets: contiguous, inside one measure, lasting half a beat, one beat or whole beats,
-  // and aligned to their own length (whole-beat groups also respect the middle of 4/4).
+  // Tuplets: contiguous, inside one measure, lasting half a (two-unit or quarter) beat
+  // and aligned to it, or spanning whole beats (whole-beat groups also respect the middle of 4/4).
   const groups = new Map<number, PositionedEvent[]>();
   for (const p of flat) {
     if (!p.event.tuplet) continue;
@@ -92,10 +101,12 @@ export function validateRhythm(rhythm: Rhythm): string[] {
     const contiguous = group.every((p, k) => p.index === first.index + k && p.measureIndex === first.measureIndex);
     if (!contiguous) errors.push(`tuplet ${id}: not contiguous`);
     const start = first.tickInMeasure;
+    const beat = beats[grid.indexAt(start) % beats.length];
     const aligned =
-      ticks === beat / 2
-        ? start % (beat / 2) === 0
-        : ticks % beat === 0 && start % beat === 0 && spanRespectsMiddle(ts, start / beat, ticks / beat);
+      beat !== undefined &&
+      (ticks * 2 === beat.ticks
+        ? (start - beat.start) % ticks === 0
+        : spansWholeBeats(ts, grid, start, start + ticks));
     if (!aligned) errors.push(`tuplet ${id}: badly aligned or sized (${ticks} ticks at ${start})`);
   }
 
@@ -104,7 +115,7 @@ export function validateRhythm(rhythm: Rhythm): string[] {
 
 /** Indices of syncopated attacks in the rhythm. */
 export function findSyncopations(rhythm: Rhythm): number[] {
-  return syncopationIndices(flattenRhythm(rhythm), beatTicks(rhythm.timeSignature));
+  return syncopationIndices(flattenRhythm(rhythm), beatGrid(rhythm.timeSignature));
 }
 
 /** Elements used by the rhythm that are not in `elements` (defaults to the rhythm's own selection). */

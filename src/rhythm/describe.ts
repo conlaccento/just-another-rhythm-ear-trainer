@@ -1,7 +1,7 @@
 import { groupKey } from './features';
 import { figureKey, figureName, notatedFigure, type BaseFigure } from './figures';
 import { flattenRhythm, type PositionedEvent } from './flatten';
-import { beatTicks, meterKey } from './meters';
+import { beatGrid, meterKey, type BeatGrid } from './meters';
 import type { Rhythm } from './types';
 
 const COUNT_WORDS = ['zero', 'una', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto'];
@@ -24,7 +24,7 @@ function eventName(p: PositionedEvent, plural = false): string {
 }
 
 /** Describes one measure in Italian, grouping identical figures within the same beat. */
-function describeEvents(events: readonly PositionedEvent[], beat: number): string {
+function describeEvents(events: readonly PositionedEvent[], grid: BeatGrid): string {
   const parts: string[] = [];
   let i = 0;
   while (i < events.length) {
@@ -39,12 +39,12 @@ function describeEvents(events: readonly PositionedEvent[], beat: number): strin
     }
     // Merge a run of identical, untied figures inside the same beat ("due crome").
     let run = 1;
-    const beatIndex = Math.floor(p.tickInMeasure / beat);
+    const beatIndex = grid.indexAt(p.tickInMeasure);
     while (true) {
       const prev = events[i + run - 1];
       const next = events[i + run];
       if (!next || !prev || prev.event.tiedToNext || next.event.tuplet) break;
-      if (figureKey(next.event) !== figureKey(p.event) || Math.floor(next.tickInMeasure / beat) !== beatIndex) break;
+      if (figureKey(next.event) !== figureKey(p.event) || grid.indexAt(next.tickInMeasure) !== beatIndex) break;
       run++;
     }
     const last = events[i + run - 1];
@@ -61,11 +61,11 @@ function describeEvents(events: readonly PositionedEvent[], beat: number): strin
 
 /** Text alternative for the notation: one line per measure, e.g. "Battuta 1: semiminima, due crome". */
 export function describeRhythm(rhythm: Rhythm): string[] {
-  const beat = beatTicks(rhythm.timeSignature);
+  const grid = beatGrid(rhythm.timeSignature);
   const flat = flattenRhythm(rhythm);
   return rhythm.measures.map((_, m) => {
     const events = flat.filter((p) => p.measureIndex === m);
-    return `Battuta ${m + 1}: ${describeEvents(events, beat)}`;
+    return `Battuta ${m + 1}: ${describeEvents(events, grid)}`;
   });
 }
 

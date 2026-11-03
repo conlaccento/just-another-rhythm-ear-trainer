@@ -15,6 +15,8 @@ Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then r
 - `src/rhythm/` and `src/notation/{vexMapping,layout}.ts`, `src/audio/timeline.ts` are pure: keep DOM/Tone/VexFlow out of them so they stay unit-testable.
 - Rhythm cells in `src/rhythm/cells.ts` are pure data; required elements (figures, rests, groups, ties, syncopation) are derived in `features.ts`, never declared by hand.
 - Timing grid is 48 ticks per quarter: quintuplets/septuplets are intentionally unsupported.
+- Meters (`src/rhythm/meters.ts`): code that needs "the beat" must use `measureBeats`/`beatGrid`, not `beatTicks` (which throws for additive /8 and free /16 meters). Custom meters are canonicalised with `normalizeMeter`.
+- Changes to the generator must keep standard-meter output identical for a given seed (shared links): compare a dump of many seeds before and after.
 - Import VexFlow from `vexflow/bravura`; the notation module is lazy-loaded (`src/ui/fonts.ts`) to keep the initial bundle small.
 - All audio scheduling goes through `Tone.Transport`; visual callbacks via `Tone.Draw`.
 - Settings storage key `dettato-ritmico:settings:v2` is kept on purpose despite the rename; wrap every localStorage access in try/catch.

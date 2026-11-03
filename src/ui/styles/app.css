@@ -609,6 +609,84 @@ select {
   line-height: 0.95;
 }
 
+.meter-custom {
+  position: relative;
+  /* Custom meters can have long numerators (3+2+2, 37): give them two columns. */
+  grid-column: span 2;
+}
+
+.meter-custom .option-meter {
+  padding-right: 34px;
+}
+
+.meter-glyph span {
+  white-space: nowrap;
+}
+
+.meter-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.meter-remove:hover {
+  color: var(--primary);
+}
+
+.meter-add {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.meter-add-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.meter-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Small intrinsic width, so the row never forces horizontal scrolling (WCAG 1.4.10). */
+.meter-add-row input {
+  flex: 1 1 10ch;
+  width: 10ch;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 2px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.meter-add-row input[aria-invalid='true'] {
+  border-color: var(--warning);
+}
+
+.meter-add-row .secondary {
+  flex: 0 0 auto;
+}
+
+.meter-add .option-hint {
+  margin: 0;
+}
+
 .option-hint-inline {
   grid-column: 1 / -1;
   color: var(--warning);

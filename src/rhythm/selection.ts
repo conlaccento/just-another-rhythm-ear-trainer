@@ -1,8 +1,8 @@
 import { CELLS } from './cells';
 import { ELEMENTS, METERS } from './elements';
-import { cellsForMeter, eligibleCells, feasibleMeters } from './generator';
-import { meterKind, parseMeter } from './meters';
-import type { CellDef, FigureSelection, MeterKind } from './types';
+import { cellsForMeter, feasibleMeters, usableElements } from './generator';
+import { measureBeats, meterKind, meterStructure, parseMeter } from './meters';
+import type { CellDef, FigureSelection, MeterKind, TimeSignature } from './types';
 
 export interface ElementStatus {
   readonly id: string;
@@ -25,6 +25,14 @@ export interface SelectionReport {
   readonly elements: ReadonlyMap<string, ElementStatus>;
 }
 
+/** Cell families a meter draws from (none for free meters, which use random figures). */
+function cellKindsOf(ts: TimeSignature): MeterKind[] {
+  const structure = meterStructure(ts);
+  if (structure === 'free') return [];
+  if (structure === 'additive') return [...new Set(measureBeats(ts).map((b) => b.kind))];
+  return [meterKind(ts)];
+}
+
 /** Explains what the current selection allows, for live feedback in the UI. */
 export function analyzeSelection(selection: FigureSelection, catalogue: readonly CellDef[] = CELLS): SelectionReport {
   const feasible = feasibleMeters(selection, catalogue);
@@ -36,10 +44,8 @@ export function analyzeSelection(selection: FigureSelection, catalogue: readonly
       for (const f of cell.features) kindsOf.set(f, (kindsOf.get(f) ?? new Set()).add(meterKind(ts)));
     }
   }
-  const usableFeatures = new Set(
-    feasible.flatMap((m) => eligibleCells(selection.elements, parseMeter(m), catalogue).flatMap((c) => [...c.features])),
-  );
-  const selectedKinds = new Set(selection.meters.map((m) => meterKind(parseMeter(m))));
+  const usableFeatures = new Set(feasible.flatMap((m) => [...usableElements(selection.elements, parseMeter(m), catalogue)]));
+  const selectedKinds = new Set(selection.meters.flatMap((m) => cellKindsOf(parseMeter(m))));
 
   const statuses = new Map<string, ElementStatus>();
   for (const { id } of ELEMENTS) {

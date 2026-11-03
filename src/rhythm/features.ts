@@ -1,6 +1,6 @@
 import { figureFromTicks, figureKey, parseFigures } from './figures';
 import { flattenRhythm } from './flatten';
-import { beatTicks } from './meters';
+import { beatGrid, measureBeats, type BeatGrid } from './meters';
 import type { CellDef, Rhythm, RhythmEvent, TimeSignature } from './types';
 
 interface TimedEvent {
@@ -23,11 +23,11 @@ export function groupKey(members: readonly RhythmEvent[]): string {
  * Tuplet members are excluded: their off-beat attacks are part of the group.
  * Returns the indices of the attacking events.
  */
-export function syncopationIndices(events: readonly TimedEvent[], beat: number): number[] {
+export function syncopationIndices(events: readonly TimedEvent[], grid: BeatGrid): number[] {
   const result: number[] = [];
   events.forEach((p, i) => {
     const prev = events[i - 1];
-    if (p.event.isRest || p.event.tuplet || p.startTick % beat === 0 || prev?.event.tiedToNext) return;
+    if (p.event.isRest || p.event.tuplet || grid.isBeatStart(p.startTick) || prev?.event.tiedToNext) return;
     let k = i;
     let sustainEnd = p.startTick + p.event.durationTicks;
     while (events[k]?.event.tiedToNext && events[k + 1]) {
@@ -35,13 +35,13 @@ export function syncopationIndices(events: readonly TimedEvent[], beat: number):
       const next = events[k];
       if (next) sustainEnd = next.startTick + next.event.durationTicks;
     }
-    if (sustainEnd > (Math.floor(p.startTick / beat) + 1) * beat) result.push(i);
+    if (sustainEnd > grid.endOf(p.startTick)) result.push(i);
   });
   return result;
 }
 
 /** Element ids used by a list of timed events (`countUpTo` limits which events count). */
-function featuresOf(events: readonly TimedEvent[], beat: number, countUpTo = events.length): Set<string> {
+function featuresOf(events: readonly TimedEvent[], grid: BeatGrid, countUpTo = events.length): Set<string> {
   const features = new Set<string>();
   const groups = new Map<number, RhythmEvent[]>();
   events.slice(0, countUpTo).forEach(({ event }) => {
@@ -55,21 +55,22 @@ function featuresOf(events: readonly TimedEvent[], beat: number, countUpTo = eve
     if (event.tiedToNext) features.add('tie');
   });
   for (const members of groups.values()) features.add(groupKey(members));
-  if (syncopationIndices(events, beat).some((i) => i < countUpTo)) features.add('syncopation');
+  if (syncopationIndices(events, grid).some((i) => i < countUpTo)) features.add('syncopation');
   return features;
 }
 
 /** Element ids a rhythm uses. */
 export function rhythmFeatures(rhythm: Rhythm): Set<string> {
-  return featuresOf(flattenRhythm(rhythm), beatTicks(rhythm.timeSignature));
+  return featuresOf(flattenRhythm(rhythm), beatGrid(rhythm.timeSignature));
 }
 
 /**
- * Element ids a cell requires. A trailing tie is resolved on a beat-long note, so
- * a tied off-beat note counts as a syncopation.
+ * Element ids a cell requires, for a cell placed on the first beat of `ts` (a uniform
+ * meter of the cell's kind). A trailing tie is resolved on a beat-long note, so a
+ * tied off-beat note counts as a syncopation.
  */
 export function cellFeatures(def: CellDef, ts: TimeSignature): Set<string> {
-  const beat = beatTicks(ts);
+  const beat = measureBeats(ts)[0]?.ticks ?? 0;
   const events = parseFigures(def.figures, (() => {
     let id = 0;
     return () => id++;
@@ -82,5 +83,5 @@ export function cellFeatures(def: CellDef, ts: TimeSignature): Set<string> {
   }
   const count = timed.length;
   if (events.at(-1)?.tiedToNext) timed.push({ event: { durationTicks: beat, isRest: false, tiedToNext: false }, startTick: tick });
-  return featuresOf(timed, beat, count);
+  return featuresOf(timed, beatGrid(ts), count);
 }

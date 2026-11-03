@@ -40,7 +40,7 @@ export function PlaybackSettings({ settings, onChange }: PlaybackSettingsProps) 
             onChange={(e) => onChange({ bpm: Number(e.target.value) })}
             aria-valuetext={`${settings.bpm} battiti al minuto`}
           />
-          <span className="field-help">Il battito è la semiminima nei tempi semplici, la semiminima puntata nei composti.</span>
+          <span className="field-help">Il battito è la semiminima nei tempi semplici, la semiminima puntata nei composti, la croma o la semicroma nei tempi asimmetrici e in sedicesimi.</span>
         </div>
 
         <label className="checkbox-field field-wide">

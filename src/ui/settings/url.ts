@@ -39,8 +39,14 @@ export function exerciseSearch(seed: string, settings: Settings): string {
     n: String(settings.measures),
     bpm: String(settings.bpm),
   });
-  // Keep commas, colons and slashes readable in shared links.
-  return `?${params.toString().replace(/%2C/g, ',').replace(/%3A/g, ':').replace(/%2F/g, '/')}`;
+  // Keep commas, colons, slashes and pluses readable in shared links: a literal `+`
+  // decodes to a space, which `normalizeMeter` reads back as `+` (e.g. 3+2+2/8).
+  return `?${params
+    .toString()
+    .replace(/%2C/g, ',')
+    .replace(/%3A/g, ':')
+    .replace(/%2F/g, '/')
+    .replace(/%2B/g, '+')}`;
 }
 
 /** Random seed made of 6 base-36 characters. */

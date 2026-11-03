@@ -24,6 +24,11 @@ describe('measureSpecs', () => {
     expect(spec?.beams).toEqual([[0, 1, 2]]);
   });
 
+  it('beams by group in additive meters', () => {
+    const [spec] = measureSpecs(rhythmOf('3+2+2/8', ['8', '8', '8', '8', '8', '16', '16', '8']));
+    expect(spec?.beams).toEqual([[0, 1, 2], [3, 4], [5, 6, 7]]);
+  });
+
   it('maps dotted figures and triplets', () => {
     const [spec] = measureSpecs(rhythmOf('2/4', ['q.', '8']));
     expect(spec?.notes.map((n) => [n.duration, n.dots])).toEqual([['q', 1], ['8', 0]]);
