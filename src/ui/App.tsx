@@ -1,84 +1,68 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
-import { generateRhythm, GenerationError, type FigureSelection, type Rhythm } from '../rhythm';
-import { ExercisePanel } from './components/ExercisePanel';
-import { FigurePicker } from './components/FigurePicker';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { EarTrainer } from './EarTrainer';
 import { Footer } from './components/Footer';
 import { Logo } from './components/Logo';
-import { PlaybackSettings } from './components/PlaybackSettings';
-import { exerciseReducer, initialExercise } from './exercise/exercise';
-import { loadSettings, saveSettings, type Settings } from './settings/settings';
-import { exerciseSearch, newSeed, readExerciseFromUrl } from './settings/url';
+import { viewFromHash, VIEWS, type View } from './route';
 
-type Generated = { rhythm: Rhythm; error: null } | { rhythm: null; error: string };
+/** Loaded on first visit, so the dictation does not pay for it. */
+const MetronomeView = lazy(() => import('./metronome/MetronomeView'));
 
-function generate(selection: FigureSelection, measures: number, seed: string): Generated {
-  try {
-    return { rhythm: generateRhythm({ selection, measures, seed }), error: null };
-  } catch (e) {
-    if (e instanceof GenerationError) return { rhythm: null, error: e.message };
-    throw e;
-  }
-}
+const APP_NAME = 'Just Another Rhythm Ear Trainer';
 
-/** Settings and seed come from the URL when present (shared exercise), otherwise from storage. */
-function initialState() {
-  const fromUrl = readExerciseFromUrl(window.location.search, loadSettings());
-  return { settings: fromUrl.settings, seed: fromUrl.seed ?? newSeed() };
-}
-
-export function App() {
-  const [initial] = useState(initialState);
-  const [settings, setSettings] = useState<Settings>(initial.settings);
-  const [exercise, dispatch] = useReducer(exerciseReducer, initial.seed, initialExercise);
-
-  useEffect(() => saveSettings(settings), [settings]);
-
-  const search = exerciseSearch(exercise.seed, settings);
+function useView(): View {
+  const [view, setView] = useState(() => viewFromHash(window.location.hash));
   useEffect(() => {
-    try {
-      window.history.replaceState(null, '', search);
-    } catch {
-      // Some embedded contexts forbid history changes; the share link still works.
-    }
-  }, [search]);
-  const shareUrl = `${window.location.origin}${window.location.pathname}${search}`;
+    const onHashChange = (): void => setView(viewFromHash(window.location.hash));
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  return view;
+}
 
-  const { selection, measures } = settings;
-  const generated = useMemo(() => generate(selection, measures, exercise.seed), [selection, measures, exercise.seed]);
+/**
+ * Shell: header with the two tools and the active view. Only one view is mounted at a
+ * time, so only one of them can be playing audio.
+ */
+export function App() {
+  const view = useView();
+  const mainRef = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
+  const label = VIEWS.find((v) => v.view === view)?.label ?? '';
 
-  const update = (patch: Partial<Settings>): void => {
-    setSettings((s) => ({ ...s, ...patch }));
-    // A different rhythm means a fresh attempt: hide the solution again.
-    if (patch.selection || patch.measures) dispatch({ type: 'restart' });
-  };
+  useEffect(() => {
+    document.title = view === 'trainer' ? APP_NAME : `${label} · ${APP_NAME}`;
+    // After switching view, start reading from the new content (not on page load).
+    if (firstRender.current) firstRender.current = false;
+    else mainRef.current?.focus();
+  }, [view, label]);
 
   return (
     <div className="app">
       <header className="app-header">
         <Logo />
         <div className="app-title">
-          <h1 lang="en">Just Another Rhythm Ear Trainer</h1>
-          <p className="app-subtitle">Dettato ritmico</p>
+          <h1 lang="en">{APP_NAME}</h1>
+          <nav className="app-nav" aria-label="Strumenti">
+            <ul>
+              {VIEWS.map((v) => (
+                <li key={v.view}>
+                  <a href={v.hash} aria-current={v.view === view ? 'page' : undefined}>
+                    {v.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </header>
-      <main className="layout">
-        <ExercisePanel
-          rhythm={generated.rhythm}
-          error={generated.error}
-          settings={settings}
-          exercise={exercise}
-          dispatch={dispatch}
-          onNewExercise={() => dispatch({ type: 'new', seed: newSeed() })}
-          onBpmChange={(bpm) => update({ bpm })}
-          shareUrl={shareUrl}
-        />
-        <aside className="settings" aria-labelledby="settings-title">
-          <h2 id="settings-title" className="heading heading-circle">
-            Impostazioni
-          </h2>
-          <PlaybackSettings settings={settings} onChange={update} />
-          <FigurePicker selection={settings.selection} customMeters={settings.customMeters} onChange={update} />
-        </aside>
+      <main id="main" ref={mainRef} tabIndex={-1} aria-label={label}>
+        {view === 'trainer' ? (
+          <EarTrainer />
+        ) : (
+          <Suspense fallback={<p className="playback-status">Caricamento del metronomo…</p>}>
+            <MetronomeView />
+          </Suspense>
+        )}
       </main>
       <Footer />
     </div>

@@ -125,13 +125,39 @@ body {
   text-transform: uppercase;
 }
 
-.app-subtitle {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+/* Tool switcher: the current one is underlined by a red bar, so it is not shown by colour alone. */
+.app-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-bottom: 4px solid transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-decoration: none;
   text-transform: uppercase;
+}
+
+.app-nav a:hover {
+  border-bottom-color: var(--accent-soft);
+}
+
+.app-nav a[aria-current='page'] {
+  border-bottom-color: var(--primary);
+}
+
+main:focus {
+  outline: none;
 }
 
 @media (max-width: 560px) {
@@ -202,7 +228,8 @@ h3 {
     grid-template-columns: 1fr minmax(380px, 440px);
     align-items: start;
   }
-  .exercise {
+  .exercise,
+  .metronome-panel {
     position: sticky;
     top: 24px;
   }
@@ -787,6 +814,166 @@ select {
   color: var(--warning);
 }
 
+/* --------------------------------------------------------------- metronome */
+.metronome-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin-bottom: 20px;
+}
+
+.metronome-display .exercise-meta {
+  margin: 0;
+}
+
+.beat-lights {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.led {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--border);
+  border-radius: 50%;
+}
+
+.led::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.led-accent::after {
+  background: var(--primary);
+}
+
+.led-beat::after {
+  background: var(--accent-soft);
+}
+
+/* A short flash; with reduced motion the light just stays on until the next beat. */
+.led[data-lit='true']::after {
+  opacity: 1;
+  animation: led-flash 0.3s ease-out forwards;
+}
+
+@keyframes led-flash {
+  0%,
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+.beat-number {
+  min-width: 4ch;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.beat-number-value {
+  font-size: 3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.beat-number-total {
+  color: var(--muted);
+  font-size: 1.3rem;
+}
+
+.metronome-actions > button {
+  min-height: 64px;
+  font-size: 1.1rem;
+}
+
+.metronome-start {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+}
+
+.metronome-help {
+  max-width: 62ch;
+  margin: 12px 0 24px;
+}
+
+.tempo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tempo-row input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tempo-step {
+  flex: none;
+  width: 56px;
+  padding: 0;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.beat-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.beat-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  border: 2px solid var(--border);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.beat-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--on-accent-soft);
+}
+
+.beat-option[data-checked='true'] {
+  border-color: var(--on-accent-soft);
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.beat-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.beat-option input:focus-visible {
+  outline: none;
+}
+
+.volume-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 /* Windows high contrast and other forced-colors modes: use system colours. */
 @media (forced-colors: active) {
   .notation .vf-current {
@@ -800,5 +987,14 @@ select {
   }
   .option[data-warning='true'] {
     border-style: dashed;
+  }
+  .led::after {
+    background: Highlight;
+  }
+  .beat-option[data-checked='true'] {
+    border-color: Highlight;
+  }
+  .app-nav a[aria-current='page'] {
+    border-bottom-color: Highlight;
   }
 }

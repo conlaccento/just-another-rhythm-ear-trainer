@@ -1,6 +1,8 @@
 # Just Another Rhythm Ear Trainer
 
-Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then reveals the solution. No answer input, no auto-grading, no backend.
+Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metronomo`):
+- Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then reveals the solution. No answer input, no auto-grading, no backend.
+- Drummer's metronome (`src/metronome/`, UI in `src/ui/metronome/`, lazy-loaded): 35-250 BPM, tap tempo, 0-9 beats, a volume per layer (quarter, eighth, sixteenth, triplet, accent; no master control, it is fixed at maximum), beat lights.
 
 ## Commands
 - `npm test` - Vitest (includes a WCAG contrast test on the CSS color tokens in `src/ui/styles/app.css`)
@@ -18,9 +20,13 @@ Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then r
 - Meters (`src/rhythm/meters.ts`): code that needs "the beat" must use `measureBeats`/`beatGrid`, not `beatTicks` (which throws for additive /8 and free /16 meters). Custom meters are canonicalised with `normalizeMeter`.
 - Changes to the generator must keep standard-meter output identical for a given seed (shared links): compare a dump of many seeds before and after.
 - Import VexFlow from `vexflow/bravura`; the notation module is lazy-loaded (`src/ui/fonts.ts`) to keep the initial bundle small.
-- All audio scheduling goes through `Tone.Transport`; visual callbacks via `Tone.Draw`.
+- Dictation audio is scheduled on `Tone.Transport`; visual callbacks via `Tone.Draw`.
+- The metronome does NOT use the Transport: the pure lookahead scheduler `src/metronome/clock.ts` (unit-tested timing, tempo changes re-anchor at the scheduling horizon) is driven by `Tone.getContext().setInterval` (worker ticker, keeps time in background tabs). Only one view is mounted at a time, so the two never play together.
+- The query string belongs to shared exercises: never use it for navigation; `EarTrainer` keeps the hash when it rewrites the URL.
+- Native controls only in the metronome (sliders, buttons, radios): the owner rejected a rotary knob.
 - Dictation is scheduled in seconds at a fixed Transport tempo; the "Solo metronomo" loop is scheduled in Transport ticks so BPM changes apply live (`quarterBpm` converts the BPM setting). `play()` resets `transport.bpm`.
-- Settings storage key `dettato-ritmico:settings:v2` is kept on purpose despite the rename; wrap every localStorage access in try/catch.
+- Settings storage keys `dettato-ritmico:settings:v2` (dictation) and `dettato-ritmico:metronome:v1` are kept on purpose despite the rename; wrap every localStorage access in try/catch.
+- `<output>` has an implicit live region: add `aria-live="off"` where values change often (tap, sliders) and announce through the debounced status instead.
 
 ## Product rules (confirmed by the owner)
 - UI text in Italian; English strings get `lang="en"`.

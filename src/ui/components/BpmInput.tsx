@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { clampBpm, MAX_BPM, MIN_BPM } from '../../audio';
+import { MAX_BPM, MIN_BPM } from '../../audio';
 
 interface BpmInputProps {
   readonly id: string;
   readonly value: number;
   readonly onChange: (bpm: number) => void;
+  /** Range, the dictation's by default. */
+  readonly min?: number;
+  readonly max?: number;
 }
 
 /**
@@ -12,7 +15,7 @@ interface BpmInputProps {
  * are not clamped while typing; valid in-range values are committed immediately, anything else
  * is clamped on blur or Enter.
  */
-export function BpmInput({ id, value, onChange }: BpmInputProps) {
+export function BpmInput({ id, value, onChange, min = MIN_BPM, max = MAX_BPM }: BpmInputProps) {
   const [draft, setDraft] = useState(String(value));
 
   // Follow external changes (the slider, a shared link).
@@ -20,7 +23,7 @@ export function BpmInput({ id, value, onChange }: BpmInputProps) {
 
   const commit = (): void => {
     const parsed = Number(draft);
-    const next = draft.trim() === '' || !Number.isFinite(parsed) ? value : clampBpm(parsed);
+    const next = draft.trim() === '' || !Number.isFinite(parsed) ? value : Math.min(max, Math.max(min, Math.round(parsed)));
     setDraft(String(next));
     if (next !== value) onChange(next);
   };
@@ -31,15 +34,15 @@ export function BpmInput({ id, value, onChange }: BpmInputProps) {
       className="meta-input"
       type="number"
       inputMode="numeric"
-      min={MIN_BPM}
-      max={MAX_BPM}
+      min={min}
+      max={max}
       step={1}
       value={draft}
       onChange={(e) => {
         const raw = e.target.value;
         setDraft(raw);
         const parsed = Number(raw);
-        if (raw !== '' && Number.isInteger(parsed) && parsed >= MIN_BPM && parsed <= MAX_BPM) onChange(parsed);
+        if (raw !== '' && Number.isInteger(parsed) && parsed >= min && parsed <= max) onChange(parsed);
       }}
       onBlur={commit}
       onKeyDown={(e) => {
