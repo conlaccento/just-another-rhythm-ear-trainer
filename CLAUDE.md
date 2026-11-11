@@ -2,7 +2,7 @@
 
 Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metronomo`):
 - Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then reveals the solution. No answer input, no auto-grading, no backend.
-- Drummer's metronome (`src/metronome/`, UI in `src/ui/metronome/`, lazy-loaded): 35-250 BPM, tap tempo, 0-9 beats, a volume per layer (quarter, eighth, sixteenth, triplet, accent; no master control, it is fixed at maximum), beat lights.
+- Drummer's metronome (`src/metronome/`, UI in `src/ui/metronome/`, lazy-loaded): 35-250 BPM, tap tempo, 0-9 beats, a volume per layer (quarter, eighth, sixteenth, triplet, accent; no master control, it is fixed at maximum), beat lights. 30 programs (PROG 01-30, optional name, STORE), an ordered setlist with previous/next for concerts, JSON export/import (`src/metronome/programs.ts`, 1-based numbers in the file).
 
 ## Commands
 - `npm test` - Vitest (includes a WCAG contrast test on the CSS color tokens in `src/ui/styles/app.css`)
@@ -25,7 +25,7 @@ Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metrono
 - The query string belongs to shared exercises: never use it for navigation; `EarTrainer` keeps the hash when it rewrites the URL.
 - Native controls only in the metronome (sliders, buttons, radios): the owner rejected a rotary knob.
 - Dictation is scheduled in seconds at a fixed Transport tempo; the "Solo metronomo" loop is scheduled in Transport ticks so BPM changes apply live (`quarterBpm` converts the BPM setting). `play()` resets `transport.bpm`.
-- Settings storage keys `dettato-ritmico:settings:v2` (dictation) and `dettato-ritmico:metronome:v1` are kept on purpose despite the rename; wrap every localStorage access in try/catch.
+- Settings storage keys `dettato-ritmico:settings:v2` (dictation), `dettato-ritmico:metronome:v1` and `dettato-ritmico:metronome-programs:v1` are kept on purpose despite the rename; wrap every localStorage access in try/catch.
 - `<output>` has an implicit live region: add `aria-live="off"` where values change often (tap, sliders) and announce through the debounced status instead.
 
 ## Product rules (confirmed by the owner)

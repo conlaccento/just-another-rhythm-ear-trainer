@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { clampMetronomeBpm, MAX_BEATS, METRONOME_MAX_BPM, METRONOME_MIN_BPM, VOLUME_KEYS, VOLUME_LABELS, VOLUME_MAX, type VolumeKey } from '../../metronome/config';
+import {
+  addToSetlist,
+  clearProgram,
+  isModified,
+  loadBank,
+  moveInSetlist,
+  programNumber,
+  removeFromSetlist,
+  requestPersistentStorage,
+  saveBank,
+  selectProgram,
+  storeProgram,
+  type ProgramBank,
+} from '../../metronome/programs';
 import { loadMetronomeSettings, saveMetronomeSettings, type MetronomeSettings } from '../../metronome/settings';
 import { addTap, tapBpm } from '../../metronome/tap';
 import { BpmInput } from '../components/BpmInput';
+import { ProgramPanel, programLabel } from './ProgramPanel';
 import { useMetronome, type LitBeat } from './useMetronome';
 
 /** Tempo announcements wait for the value to settle, so holding +/- or tapping is not read out at every step. */
@@ -30,17 +45,89 @@ function BeatLights({ beat, beats }: { readonly beat: LitBeat | null; readonly b
   );
 }
 
-/** Drummer's metronome: tempo, tap tempo, beats per measure, a volume for each layer. */
+interface SetlistNavProps {
+  readonly bank: ProgramBank;
+  readonly position: number | null;
+  readonly onGo: (position: number) => void;
+}
+
+/** Concert view of the setlist: where we are, what comes next, big previous/next buttons. */
+function SetlistNav({ bank, position, onGo }: SetlistNavProps) {
+  const { setlist } = bank;
+  const current = position === null ? undefined : setlist[position];
+  const nextIndex = position === null ? 0 : position + 1;
+  const next = setlist[nextIndex];
+  return (
+    <section className="setlist-nav" aria-labelledby="setlist-nav-title">
+      <h3 id="setlist-nav-title">Scaletta</h3>
+      <p className="setlist-now">
+        {current === undefined || position === null ? (
+          <>Non iniziata · {setlist.length === 1 ? '1 brano' : `${setlist.length} brani`}</>
+        ) : (
+          <>
+            {position + 1} di {setlist.length}: <strong>{programLabel(bank, current)}</strong>
+          </>
+        )}
+      </p>
+      <p className="setlist-next">{next === undefined ? 'Fine della scaletta.' : `Poi: ${programLabel(bank, next)}`}</p>
+      <div className="actions">
+        <button type="button" className="secondary" onClick={() => position !== null && onGo(position - 1)} disabled={position === null || position === 0}>
+          Precedente
+        </button>
+        <button type="button" className="secondary" onClick={() => onGo(nextIndex)} disabled={next === undefined}>
+          {position === null ? 'Primo brano' : 'Successivo'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Drummer's metronome: tempo, tap tempo, beats per measure, a volume for each layer, 30 programs and a setlist. */
 export default function MetronomeView() {
   const [settings, setSettings] = useState<MetronomeSettings>(loadMetronomeSettings);
+  const [bank, setBank] = useState<ProgramBank>(loadBank);
+  const [setlistPosition, setSetlistPosition] = useState<number | null>(null);
   const { running, beat, start, stop } = useMetronome(settings);
-  const [announcement, setAnnouncement] = useState('');
+  const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const tapsRef = useRef<number[]>([]);
   const startButtonRef = useRef<HTMLButtonElement>(null);
   const announceTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => saveMetronomeSettings(settings), [settings]);
+  useEffect(() => saveBank(bank), [bank]);
   useEffect(() => () => window.clearTimeout(announceTimer.current), []);
+  // An edited setlist may be shorter than the current position.
+  useEffect(() => {
+    if (setlistPosition !== null && setlistPosition >= bank.setlist.length) setSetlistPosition(null);
+  }, [bank.setlist.length, setlistPosition]);
+
+  /** The count makes a repeated message (e.g. stopping twice) still change, so it is read again. */
+  const say = (text: string): void => setAnnouncement((a) => ({ text, count: a.count + 1 }));
+  /** Any other message supersedes a tempo announcement still waiting to settle. */
+  const announce = (text: string): void => {
+    window.clearTimeout(announceTimer.current);
+    say(text);
+  };
+  const modified = isModified(bank, bank.selected, settings);
+
+  const loadSlot = (slot: number): void => {
+    const program = bank.slots[slot];
+    setBank((b) => selectProgram(b, slot));
+    if (program) {
+      setSettings(program.settings);
+      const { bpm, beats } = program.settings;
+      announce(`Programma ${programLabel(bank, slot)}: ${bpm} BPM, ${beats === 1 ? '1 battito' : `${beats} battiti`}.`);
+    } else {
+      announce(`Programma ${programNumber(slot)} vuoto.`);
+    }
+  };
+
+  const goToSetlist = (position: number): void => {
+    const slot = bank.setlist[position];
+    if (slot === undefined) return;
+    setSetlistPosition(position);
+    loadSlot(slot);
+  };
 
   const update = (patch: Partial<MetronomeSettings>): void => setSettings((s) => ({ ...s, ...patch }));
   const setVolume = (key: VolumeKey, value: number): void =>
@@ -48,7 +135,7 @@ export default function MetronomeView() {
 
   const announceTempo = (bpm: number): void => {
     window.clearTimeout(announceTimer.current);
-    announceTimer.current = window.setTimeout(() => setAnnouncement(`Tempo ${bpm} BPM`), ANNOUNCE_DELAY);
+    announceTimer.current = window.setTimeout(() => say(`Tempo ${bpm} BPM`), ANNOUNCE_DELAY);
   };
 
   const stepTempo = (delta: number): void => {
@@ -63,7 +150,7 @@ export default function MetronomeView() {
     if (!running) {
       tapsRef.current = addTap([], now);
       void start();
-      setAnnouncement(`Metronomo avviato a ${settings.bpm} BPM.`);
+      announce(`Metronomo avviato a ${settings.bpm} BPM.`);
       return;
     }
     tapsRef.current = addTap(tapsRef.current, now);
@@ -77,7 +164,7 @@ export default function MetronomeView() {
   const onStop = (): void => {
     stop();
     tapsRef.current = [];
-    setAnnouncement('Metronomo fermato.');
+    announce('Metronomo fermato.');
     // The stop button becomes disabled: keep the focus on the controls.
     startButtonRef.current?.focus();
   };
@@ -91,6 +178,18 @@ export default function MetronomeView() {
 
         <div className="metronome-display">
           <dl className="exercise-meta">
+            <div className="meta-item">
+              <dt>Prog</dt>
+              <dd>
+                {programNumber(bank.selected)}
+                {modified && bank.slots[bank.selected] && (
+                  <span className="modified-mark" title="Modificato">
+                    <span aria-hidden="true">*</span>
+                    <span className="visually-hidden"> (modificato)</span>
+                  </span>
+                )}
+              </dd>
+            </div>
             <div className="meta-item">
               <dt>
                 <label htmlFor="metronome-bpm">BPM</label>
@@ -106,6 +205,7 @@ export default function MetronomeView() {
           </dl>
           <BeatLights beat={beat} beats={settings.beats} />
         </div>
+        {bank.slots[bank.selected]?.name && <p className="program-name">{bank.slots[bank.selected]?.name}</p>}
 
         <div className="actions metronome-actions">
           <button ref={startButtonRef} type="button" className="primary metronome-start" onClick={onStartTap}>
@@ -146,55 +246,91 @@ export default function MetronomeView() {
           </div>
         </div>
 
+        {bank.setlist.length > 0 && <SetlistNav bank={bank} position={setlistPosition} onGo={goToSetlist} />}
+
         <p className="visually-hidden" role="status" aria-live="polite">
-          {announcement}
+          {announcement.text}
+          {announcement.count % 2 === 1 ? '\u00a0' : ''}
         </p>
       </section>
 
-      <aside className="settings" aria-labelledby="metronome-settings-title">
-        <h2 id="metronome-settings-title" className="heading heading-circle">
-          Impostazioni
-        </h2>
+      <div className="settings">
+        <section aria-labelledby="metronome-settings-title">
+          <h2 id="metronome-settings-title" className="heading heading-circle">
+            Impostazioni
+          </h2>
 
-        <fieldset className="picker-group">
-          <legend>Battiti per misura</legend>
-          <ul className="beat-options">
-            {BEAT_OPTIONS.map((n) => (
-              <li key={n}>
-                <label className="beat-option" data-checked={settings.beats === n}>
-                  <input type="radio" name="metronome-beats" value={n} checked={settings.beats === n} onChange={() => update({ beats: n })} />
-                  <span>{n}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-          <p className="field-help">L’accento cade sul primo battito; con 0 non c’è nessun accento.</p>
-        </fieldset>
+          <fieldset className="picker-group">
+            <legend>Battiti per misura</legend>
+            <ul className="beat-options">
+              {BEAT_OPTIONS.map((n) => (
+                <li key={n}>
+                  <label className="beat-option" data-checked={settings.beats === n}>
+                    <input type="radio" name="metronome-beats" value={n} checked={settings.beats === n} onChange={() => update({ beats: n })} />
+                    <span>{n}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <p className="field-help">L’accento cade sul primo battito; con 0 non c’è nessun accento.</p>
+          </fieldset>
 
-        <fieldset className="picker-group">
-          <legend>Volumi</legend>
-          <div className="volume-list">
-            {VOLUME_KEYS.map((key) => (
-              <div key={key} className="field volume-field">
-                <label htmlFor={`volume-${key}`}>
-                  {VOLUME_LABELS[key]}: <output htmlFor={`volume-${key}`} aria-live="off">{settings.volumes[key]}</output>
-                </label>
-                <input
-                  id={`volume-${key}`}
-                  type="range"
-                  min={0}
-                  max={VOLUME_MAX}
-                  step={1}
-                  value={settings.volumes[key]}
-                  onChange={(e) => setVolume(key, Number(e.target.value))}
-                  aria-valuetext={volumeText(settings.volumes[key])}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="field-help">Le suddivisioni si sommano: alza più volumi per sentirle insieme.</p>
-        </fieldset>
-      </aside>
+          <fieldset className="picker-group">
+            <legend>Volumi</legend>
+            <div className="volume-list">
+              {VOLUME_KEYS.map((key) => (
+                <div key={key} className="field volume-field">
+                  <label htmlFor={`volume-${key}`}>
+                    {VOLUME_LABELS[key]}: <output htmlFor={`volume-${key}`} aria-live="off">{settings.volumes[key]}</output>
+                  </label>
+                  <input
+                    id={`volume-${key}`}
+                    type="range"
+                    min={0}
+                    max={VOLUME_MAX}
+                    step={1}
+                    value={settings.volumes[key]}
+                    onChange={(e) => setVolume(key, Number(e.target.value))}
+                    aria-valuetext={volumeText(settings.volumes[key])}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="field-help">Le suddivisioni si sommano: alza più volumi per sentirle insieme.</p>
+          </fieldset>
+        </section>
+
+        <ProgramPanel
+          bank={bank}
+          modified={modified}
+          announce={announce}
+          onSelect={loadSlot}
+          onStore={(name) => {
+            const slot = bank.selected;
+            setBank((b) => storeProgram(b, slot, name, settings));
+            void requestPersistentStorage();
+            announce(`Impostazioni memorizzate nel programma ${programNumber(slot)}.`);
+          }}
+          onClear={() => {
+            const slot = bank.selected;
+            setBank((b) => clearProgram(b, slot));
+            announce(`Programma ${programNumber(slot)} cancellato.`);
+          }}
+          onAddToSetlist={() => {
+            setBank((b) => addToSetlist(b, b.selected));
+            announce(`${programLabel(bank, bank.selected)} aggiunto alla scaletta, posizione ${bank.setlist.length + 1}.`);
+          }}
+          onMoveInSetlist={(index, delta) => setBank((b) => moveInSetlist(b, index, delta))}
+          onRemoveFromSetlist={(index) => setBank((b) => removeFromSetlist(b, index))}
+          onImport={(imported) => {
+            setBank(imported);
+            void requestPersistentStorage();
+            setSetlistPosition(null);
+            const first = imported.slots[imported.selected];
+            if (first) setSettings(first.settings);
+          }}
+        />
+      </div>
     </div>
   );
 }
