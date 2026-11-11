@@ -223,6 +223,11 @@ h3 {
   gap: 40px;
 }
 
+/* Grid items default to their min-content width: let wide rows (e.g. the summary boxes) wrap instead. */
+.layout > * {
+  min-width: 0;
+}
+
 @media (min-width: 1000px) {
   .layout {
     grid-template-columns: 1fr minmax(380px, 440px);
@@ -541,6 +546,8 @@ select {
 
 /* ------------------------------------------------------------------ settings */
 .picker-group {
+  /* Fieldsets default to min-content width, which would overflow narrow screens. */
+  min-width: 0;
   margin: 0 0 20px;
   padding: 14px;
   border: 2px solid var(--border);
@@ -927,7 +934,8 @@ select {
 
 .beat-options {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* Five per row when there is room (0-4, 5-9), fewer on narrow phones for two-digit numbers. */
+  grid-template-columns: repeat(auto-fill, minmax(max(64px, 18%), 1fr));
   gap: 8px;
   margin: 0 0 8px;
   padding: 0;
@@ -972,6 +980,60 @@ select {
   display: grid;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.sub-group {
+  min-width: 0;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.picker-group .sub-group legend {
+  margin-bottom: 8px;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.unit-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unit-options .beat-option {
+  justify-content: flex-start;
+  padding: 0 10px;
+  font-size: 0.95rem;
+}
+
+.meter-groups {
+  display: block;
+  max-width: 12rem;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.numerator-field {
+  margin-top: 12px;
+}
+
+.numerator-field .text-input {
+  width: 7rem;
+}
+
+.volume-field[data-available='false'] label {
+  color: var(--muted);
 }
 
 /* ---------------------------------------------------------------- programs */

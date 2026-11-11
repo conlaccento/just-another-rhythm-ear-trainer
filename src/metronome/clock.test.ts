@@ -19,7 +19,7 @@ const times = (clicks: readonly ScheduledClick[], level: Level): number[] => cli
 const intervals = (values: readonly number[]): number[] => values.slice(1).map((v, i) => v - (values[i] ?? 0));
 
 const SUBDIVISIONS: readonly [Level, number][] = [
-  ['quarter', 1],
+  ['beat', 1],
   ['eighth', 2],
   ['sixteenth', 4],
   ['triplet', 3],
@@ -28,7 +28,7 @@ const SUBDIVISIONS: readonly [Level, number][] = [
 describe.each([35, 120, 250])('at %s BPM', (bpm) => {
   const beat = 60 / bpm;
   const start = 0.1;
-  const { clicks } = run(startScheduler(measurePattern(4), bpm, start), 0, 12 * beat);
+  const { clicks } = run(startScheduler(measurePattern('4/4'), bpm, start), 0, 12 * beat);
 
   it.each(SUBDIVISIONS)('%s clicks are evenly spaced (%s per beat)', (level, perBeat) => {
     const t = times(clicks, level);
@@ -45,13 +45,13 @@ describe.each([35, 120, 250])('at %s BPM', (bpm) => {
   });
 
   it('numbers the beats 0..3 cyclically', () => {
-    expect(clicks.filter((c) => c.level === 'quarter').map((c) => c.beat).slice(0, 9)).toEqual([0, 1, 2, 3, 0, 1, 2, 3, 0]);
+    expect(clicks.filter((c) => c.level === 'beat').map((c) => c.beat).slice(0, 9)).toEqual([0, 1, 2, 3, 0, 1, 2, 3, 0]);
   });
 });
 
 describe('scheduling', () => {
   it('returns the same clicks whatever the timer jitter', () => {
-    const start = startScheduler(measurePattern(3), 137, 0.1);
+    const start = startScheduler(measurePattern('3/4'), 137, 0.1);
     const once = advance(start, 10).clicks;
     let state = start;
     const chunked: ScheduledClick[] = [];
@@ -68,15 +68,15 @@ describe('scheduling', () => {
   });
 
   it('never returns a click twice when the horizon does not move', () => {
-    const first = advance(startScheduler(measurePattern(4), 120, 0), 1);
+    const first = advance(startScheduler(measurePattern('4/4'), 120, 0), 1);
     expect(advance(first.state, 1).clicks).toEqual([]);
     expect(advance(first.state, 0.5).clicks).toEqual([]);
   });
 
   it('with 0 beats has no accent and a one-beat cycle', () => {
-    const { clicks } = advance(startScheduler(measurePattern(0), 60, 0), 4.5);
+    const { clicks } = advance(startScheduler(measurePattern('0/4'), 60, 0), 4.5);
     expect(times(clicks, 'accent')).toEqual([]);
-    expect(clicks.filter((c) => c.level === 'quarter').map((c) => c.beat)).toEqual([0, 0, 0, 0, 0]);
+    expect(clicks.filter((c) => c.level === 'beat').map((c) => c.beat)).toEqual([0, 0, 0, 0, 0]);
   });
 });
 
@@ -87,11 +87,11 @@ describe('tempo change while playing', () => {
     [35, 250],
     [250, 35],
   ])('from %s to %s BPM keeps the beat', (fromBpm, toBpm) => {
-    const before = run(startScheduler(measurePattern(4), fromBpm, 0.1), 0, 2.013);
+    const before = run(startScheduler(measurePattern('4/4'), fromBpm, 0.1), 0, 2.013);
     const changed = changeTempo(before.state, toBpm);
     const horizon = changed.horizon;
     const after = run(changed, 2.013 + 0.025, 12);
-    const quarters = [...before.clicks, ...after.clicks].filter((c) => c.level === 'quarter');
+    const quarters = [...before.clicks, ...after.clicks].filter((c) => c.level === 'beat');
 
     // No beat lost or doubled: positions are consecutive quarters, beats keep cycling.
     quarters.forEach((c, i) => {
@@ -118,7 +118,7 @@ describe('tempo change while playing', () => {
   });
 
   it('keeps subdivisions aligned to the beat after the change', () => {
-    const before = run(startScheduler(measurePattern(4), 100, 0), 0, 1.5);
+    const before = run(startScheduler(measurePattern('4/4'), 100, 0), 0, 1.5);
     const after = run(changeTempo(before.state, 180), 1.525, 8);
     const sixteenths = [...before.clicks, ...after.clicks].filter((c) => c.level === 'sixteenth');
     sixteenths.forEach((c, i) => expect(c.tick).toBe(i * 12));
@@ -129,9 +129,9 @@ describe('tempo change while playing', () => {
 
 describe('pattern change while playing', () => {
   it('applies the new beat count from the next measure', () => {
-    const before = advance(startScheduler(measurePattern(4), 60, 0), 1.5); // inside beat 2 of 4
-    const after = advance(changePattern(before.state, measurePattern(3)), 11);
-    const quarters = [...before.clicks, ...after.clicks].filter((c) => c.level === 'quarter');
+    const before = advance(startScheduler(measurePattern('4/4'), 60, 0), 1.5); // inside beat 2 of 4
+    const after = advance(changePattern(before.state, measurePattern('3/4')), 11);
+    const quarters = [...before.clicks, ...after.clicks].filter((c) => c.level === 'beat');
     expect(quarters.map((c) => c.beat)).toEqual([0, 1, 2, 3, 0, 1, 2, 0, 1, 2, 0]);
     expect(quarters.map((c) => c.beats)).toEqual([4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3]);
     expect(times([...before.clicks, ...after.clicks], 'accent')).toEqual([0, 4, 7, 10]);

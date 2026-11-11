@@ -35,10 +35,10 @@ interface Noise {
   readonly volume: number;
 }
 
-/** Accent: bright and high; quarter: pure tone; eighth: hollow square; sixteenth: hi-hat tick; triplet: low wood. */
+/** Accent: bright and high; movement: pure tone; eighth: hollow square; sixteenth: hi-hat tick; triplet: low wood. */
 const TIMBRES: Readonly<Record<Level, Tonal | Noise>> = {
   accent: { kind: 'tone', note: 'A6', decay: 0.07, oscillator: 'triangle', volume: 0 },
-  quarter: { kind: 'tone', note: 'E6', decay: 0.05, oscillator: 'sine', volume: -2 },
+  beat: { kind: 'tone', note: 'E6', decay: 0.05, oscillator: 'sine', volume: -2 },
   eighth: { kind: 'tone', note: 'A5', decay: 0.03, oscillator: 'square', volume: -16 },
   sixteenth: { kind: 'noise', decay: 0.025, highpass: 7000, volume: -8 },
   triplet: { kind: 'tone', note: 'D5', decay: 0.04, oscillator: 'triangle', volume: -4 },

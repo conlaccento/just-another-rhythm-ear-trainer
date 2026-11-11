@@ -2,7 +2,7 @@
 
 Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metronomo`):
 - Rhythmic dictation trainer: generate a rhythm, user transcribes on paper, then reveals the solution. No answer input, no auto-grading, no backend.
-- Drummer's metronome (`src/metronome/`, UI in `src/ui/metronome/`, lazy-loaded): 35-250 BPM, tap tempo, 0-9 beats, a volume per layer (quarter, eighth, sixteenth, triplet, accent; no master control, it is fixed at maximum), beat lights. 30 programs (PROG 01-30, optional name, STORE), an ordered setlist with previous/next for concerts, JSON export/import (`src/metronome/programs.ts`, 1-based numbers in the file).
+- Drummer's metronome (`src/metronome/`, UI in `src/ui/metronome/`, lazy-loaded): 35-250 BPM, tap tempo, meters up to 12/4 (`0/4` = no accent), 24/8 and 48/16 with 2+3 groupings (quick choices 0-9 and 2-15, other numerators typed; groupings listed up to 16 units, typed above since their count grows exponentially) (`src/metronome/meter.ts`, built on the dictation's `src/rhythm/meters.ts`; BPM counts the same note value as in the dictation, via `pulseTicks`), a volume per layer (movements = quarters in /4 or group starts in /8 and /16, eighth, sixteenth, triplet, accent; layers that do not fit a meter are disabled; no master control, it is fixed at maximum), beat lights. 30 programs (PROG 01-30, optional name, STORE), an ordered setlist with previous/next for concerts, JSON export/import (`src/metronome/programs.ts`, 1-based numbers in the file).
 
 ## Commands
 - `npm test` - Vitest (includes a WCAG contrast test on the CSS color tokens in `src/ui/styles/app.css`)
@@ -23,6 +23,7 @@ Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metrono
 - Dictation audio is scheduled on `Tone.Transport`; visual callbacks via `Tone.Draw`.
 - The metronome does NOT use the Transport: the pure lookahead scheduler `src/metronome/clock.ts` (unit-tested timing, tempo changes re-anchor at the scheduling horizon) is driven by `Tone.getContext().setInterval` (worker ticker, keeps time in background tabs). Only one view is mounted at a time, so the two never play together.
 - The query string belongs to shared exercises: never use it for navigation; `EarTrainer` keeps the hash when it rewrites the URL.
+- Metronome meter or pulse changes apply from the next downbeat (the scheduler re-anchors there); BPM changes apply at once. Older stored data used `beats` and a `quarter` volume: `parseMetronomeSettings` migrates them.
 - Native controls only in the metronome (sliders, buttons, radios): the owner rejected a rotary knob.
 - Dictation is scheduled in seconds at a fixed Transport tempo; the "Solo metronomo" loop is scheduled in Transport ticks so BPM changes apply live (`quarterBpm` converts the BPM setting). `play()` resets `transport.bpm`.
 - Settings storage keys `dettato-ritmico:settings:v2` (dictation), `dettato-ritmico:metronome:v1` and `dettato-ritmico:metronome-programs:v1` are kept on purpose despite the rename; wrap every localStorage access in try/catch.

@@ -16,7 +16,7 @@ import {
 } from './programs';
 import { DEFAULT_METRONOME_SETTINGS, type MetronomeSettings } from './settings';
 
-const song = (bpm: number, beats = 4): MetronomeSettings => ({ ...DEFAULT_METRONOME_SETTINGS, bpm, beats });
+const song = (bpm: number, beats = 4): MetronomeSettings => ({ ...DEFAULT_METRONOME_SETTINGS, bpm, meter: `${beats}/4` });
 
 function sampleBank() {
   let bank = storeProgram(emptyBank(), 0, '  Intro   lenta ', song(72, 3));

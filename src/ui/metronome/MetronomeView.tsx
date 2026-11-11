@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { clampMetronomeBpm, MAX_BEATS, METRONOME_MAX_BPM, METRONOME_MIN_BPM, VOLUME_KEYS, VOLUME_LABELS, VOLUME_MAX, type VolumeKey } from '../../metronome/config';
+import { clampMetronomeBpm, METRONOME_MAX_BPM, METRONOME_MIN_BPM, VOLUME_KEYS, VOLUME_LABELS, VOLUME_MAX, type VolumeKey } from '../../metronome/config';
 import {
   addToSetlist,
   clearProgram,
@@ -17,13 +17,13 @@ import {
 import { loadMetronomeSettings, saveMetronomeSettings, type MetronomeSettings } from '../../metronome/settings';
 import { addTap, tapBpm } from '../../metronome/tap';
 import { BpmInput } from '../components/BpmInput';
+import { availableLevels, meterBeats, meterParts, NO_ACCENT_METER, pulseLabel } from '../../metronome/meter';
+import { MeterPicker, meterLabel } from './MeterPicker';
 import { ProgramPanel, programLabel } from './ProgramPanel';
 import { useMetronome, type LitBeat } from './useMetronome';
 
 /** Tempo announcements wait for the value to settle, so holding +/- or tapping is not read out at every step. */
 const ANNOUNCE_DELAY = 800;
-
-const BEAT_OPTIONS = Array.from({ length: MAX_BEATS + 1 }, (_, i) => i);
 
 const volumeText = (value: number): string => (value === 0 ? 'spento' : `${value} su ${VOLUME_MAX}`);
 
@@ -82,7 +82,15 @@ function SetlistNav({ bank, position, onGo }: SetlistNavProps) {
   );
 }
 
-/** Drummer's metronome: tempo, tap tempo, beats per measure, a volume for each layer, 30 programs and a setlist. */
+/** Plural of the BPM note value, for the help text. */
+const PULSE_PLURALS: Readonly<Record<string, string>> = {
+  semiminima: 'le semiminime',
+  'semiminima puntata': 'le semiminime puntate',
+  croma: 'le crome',
+  semicroma: 'le semicrome',
+};
+
+/** Drummer's metronome: tempo, tap tempo, meter (also odd /8 and /16), a volume for each layer, 30 programs and a setlist. */
 export default function MetronomeView() {
   const [settings, setSettings] = useState<MetronomeSettings>(loadMetronomeSettings);
   const [bank, setBank] = useState<ProgramBank>(loadBank);
@@ -109,14 +117,21 @@ export default function MetronomeView() {
     say(text);
   };
   const modified = isModified(bank, bank.selected, settings);
+  const parts = meterParts(settings.meter);
+  const meterText = settings.meter === NO_ACCENT_METER ? '0' : `${parts.numerator}/${parts.unit}`;
+  const meterGroups = parts.groups.length > 1 ? parts.groups.join('+') : null;
+  const movements = settings.meter === NO_ACCENT_METER ? 0 : meterBeats(settings.meter).length;
+  const levels = availableLevels(settings.meter);
+  const pulse = pulseLabel(settings.meter);
 
   const loadSlot = (slot: number): void => {
     const program = bank.slots[slot];
     setBank((b) => selectProgram(b, slot));
     if (program) {
       setSettings(program.settings);
-      const { bpm, beats } = program.settings;
-      announce(`Programma ${programLabel(bank, slot)}: ${bpm} BPM, ${beats === 1 ? '1 battito' : `${beats} battiti`}.`);
+      const { bpm, meter } = program.settings;
+      const title = program.name ? ` «${program.name}»` : '';
+      announce(`Programma ${programNumber(slot)}${title}: ${bpm} BPM, tempo ${meterLabel(meter)}.`);
     } else {
       announce(`Programma ${programNumber(slot)} vuoto.`);
     }
@@ -199,11 +214,15 @@ export default function MetronomeView() {
               </dd>
             </div>
             <div className="meta-item">
-              <dt>Battiti</dt>
-              <dd>{settings.beats}</dd>
+              <dt>Tempo</dt>
+              <dd>
+                {meterText}
+                {meterGroups && <span className="meter-groups">{meterGroups}</span>}
+                {settings.meter === NO_ACCENT_METER && <span className="visually-hidden"> (nessun accento)</span>}
+              </dd>
             </div>
           </dl>
-          <BeatLights beat={beat} beats={settings.beats} />
+          <BeatLights beat={beat} beats={movements} />
         </div>
         {bank.slots[bank.selected]?.name && <p className="program-name">{bank.slots[bank.selected]?.name}</p>}
 
@@ -238,12 +257,16 @@ export default function MetronomeView() {
               value={settings.bpm}
               onChange={(e) => update({ bpm: Number(e.target.value) })}
               aria-valuetext={`${settings.bpm} BPM`}
+              aria-describedby="metronome-pulse"
             />
             <button type="button" className="secondary tempo-step" onClick={() => stepTempo(1)} disabled={settings.bpm >= METRONOME_MAX_BPM}>
               <span aria-hidden="true">+</span>
               <span className="visually-hidden">Accelera di 1 BPM</span>
             </button>
           </div>
+          <span className="field-help" id="metronome-pulse">
+            In {meterLabel(settings.meter)} i BPM contano {PULSE_PLURALS[pulse] ?? pulse}.
+          </span>
         </div>
 
         {bank.setlist.length > 0 && <SetlistNav bank={bank} position={setlistPosition} onGo={goToSetlist} />}
@@ -260,43 +283,43 @@ export default function MetronomeView() {
             Impostazioni
           </h2>
 
-          <fieldset className="picker-group">
-            <legend>Battiti per misura</legend>
-            <ul className="beat-options">
-              {BEAT_OPTIONS.map((n) => (
-                <li key={n}>
-                  <label className="beat-option" data-checked={settings.beats === n}>
-                    <input type="radio" name="metronome-beats" value={n} checked={settings.beats === n} onChange={() => update({ beats: n })} />
-                    <span>{n}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <p className="field-help">L’accento cade sul primo battito; con 0 non c’è nessun accento.</p>
-          </fieldset>
+          <MeterPicker meter={settings.meter} onChange={(meter) => update({ meter })} />
 
           <fieldset className="picker-group">
             <legend>Volumi</legend>
             <div className="volume-list">
-              {VOLUME_KEYS.map((key) => (
-                <div key={key} className="field volume-field">
-                  <label htmlFor={`volume-${key}`}>
-                    {VOLUME_LABELS[key]}: <output htmlFor={`volume-${key}`} aria-live="off">{settings.volumes[key]}</output>
-                  </label>
-                  <input
-                    id={`volume-${key}`}
-                    type="range"
-                    min={0}
-                    max={VOLUME_MAX}
-                    step={1}
-                    value={settings.volumes[key]}
-                    onChange={(e) => setVolume(key, Number(e.target.value))}
-                    aria-valuetext={volumeText(settings.volumes[key])}
-                  />
-                </div>
-              ))}
+              {VOLUME_KEYS.map((key) => {
+                const available = levels.has(key);
+                return (
+                  <div key={key} className="field volume-field" data-available={available}>
+                    <label htmlFor={`volume-${key}`}>
+                      {VOLUME_LABELS[key]}: <output htmlFor={`volume-${key}`} aria-live="off">{settings.volumes[key]}</output>
+                    </label>
+                    <input
+                      id={`volume-${key}`}
+                      type="range"
+                      min={0}
+                      max={VOLUME_MAX}
+                      step={1}
+                      value={settings.volumes[key]}
+                      disabled={!available}
+                      onChange={(e) => setVolume(key, Number(e.target.value))}
+                      aria-valuetext={volumeText(settings.volumes[key])}
+                      aria-describedby={available ? undefined : `volume-${key}-off`}
+                    />
+                    {!available && (
+                      <span className="field-help" id={`volume-${key}-off`}>
+                        Non si usa in {meterLabel(settings.meter)}.
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p className="field-help">Le suddivisioni si sommano: alza più volumi per sentirle insieme.</p>
+            <p className="field-help">
+              I movimenti sono le semiminime in /4 e l’inizio di ogni gruppo in /8 e /16. Le suddivisioni si sommano: alza più volumi
+              per sentirle insieme.
+            </p>
           </fieldset>
         </section>
 

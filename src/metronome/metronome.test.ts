@@ -5,15 +5,15 @@ import { addTap, tapBpm, TAP_RESET_MS } from './tap';
 
 describe('measurePattern', () => {
   it('has every layer on every beat, accent only on the first', () => {
-    const p = measurePattern(2);
+    const p = measurePattern('2/4');
     expect(p.cycleTicks).toBe(96);
     const count = (level: string) => p.clicks.filter((c) => c.level === level).length;
-    expect([count('quarter'), count('eighth'), count('sixteenth'), count('triplet'), count('accent')]).toEqual([2, 4, 8, 6, 1]);
+    expect([count('beat'), count('eighth'), count('sixteenth'), count('triplet'), count('accent')]).toEqual([2, 4, 8, 6, 1]);
     expect(p.clicks.filter((c) => c.level === 'triplet').map((c) => c.tick)).toEqual([0, 16, 32, 48, 64, 80]);
   });
 
   it('is sorted by tick', () => {
-    const ticks = measurePattern(9).clicks.map((c) => c.tick);
+    const ticks = measurePattern('9/4').clicks.map((c) => c.tick);
     expect(ticks).toEqual([...ticks].sort((a, b) => a - b));
   });
 });
@@ -50,11 +50,20 @@ describe('parseMetronomeSettings', () => {
   it('keeps valid fields and replaces invalid ones', () => {
     const parsed = parseMetronomeSettings({ bpm: 300, beats: 0, volumes: { eighth: 50, accent: -1, triplet: '9' } });
     expect(parsed.bpm).toBe(DEFAULT_METRONOME_SETTINGS.bpm);
-    expect(parsed.beats).toBe(0);
+    // Older data stored `beats` (quarter beats) instead of the meter.
+    expect(parsed.meter).toBe('0/4');
     expect(parsed.volumes.eighth).toBe(50);
     expect(parsed.volumes.accent).toBe(DEFAULT_METRONOME_SETTINGS.volumes.accent);
     expect(parsed.volumes.triplet).toBe(DEFAULT_METRONOME_SETTINGS.volumes.triplet);
     expect(parsed.volumes).not.toHaveProperty('master');
+  });
+
+  it('reads the meter and migrates the old quarter volume', () => {
+    const parsed = parseMetronomeSettings({ meter: ' 3 + 2 + 2 / 8', beats: 5, volumes: { quarter: 33 } });
+    expect(parsed.meter).toBe('3+2+2/8');
+    expect(parsed.volumes.beat).toBe(33);
+    expect(parseMetronomeSettings({ meter: '25/8' }).meter).toBe(DEFAULT_METRONOME_SETTINGS.meter);
+    expect(parseMetronomeSettings({ beats: 7 }).meter).toBe('7/4');
   });
 
   it('falls back entirely on garbage', () => {

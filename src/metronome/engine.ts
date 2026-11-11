@@ -15,13 +15,11 @@ const TIMER_INTERVAL = 0.025;
 const START_DELAY = 0.1;
 
 export interface BeatInfo {
-  /** 0-based beat of the measure. */
+  /** 0-based movement of the measure. */
   readonly beat: number;
-  /** Beats per measure (0: no accent). */
+  /** Movements per measure (0: no accent). */
   readonly beats: number;
   readonly accent: boolean;
-  /** Seconds until the next beat, for the light duration. */
-  readonly duration: number;
 }
 
 export interface MetronomeCallbacks {
@@ -33,7 +31,7 @@ export interface MetronomeCallbacks {
 export interface MetronomeEngine {
   /** Must be called from a user gesture the first time (it unlocks the AudioContext). */
   start(settings: MetronomeSettings): Promise<void>;
-  /** Applies new settings: tempo and volumes at once, the beat count from the next measure. */
+  /** Applies new settings: tempo and volumes at once, the meter from the next measure. */
   update(settings: MetronomeSettings): void;
   stop(): void;
   isRunning(): boolean;
@@ -59,13 +57,8 @@ export function createMetronomeEngine(callbacks: MetronomeCallbacks = {}): Metro
     const draw = Tone.getDraw();
     for (const click of result.clicks) {
       if (voices.audible(click.level)) voices.trigger(click.level, click.time);
-      if (click.level === 'quarter') {
-        const info: BeatInfo = {
-          beat: click.beat,
-          beats: click.beats,
-          accent: click.beats > 0 && click.beat === 0,
-          duration: 60 / scheduler.tempo.bpm,
-        };
+      if (click.level === 'beat') {
+        const info: BeatInfo = { beat: click.beat, beats: click.beats, accent: click.beats > 0 && click.beat === 0 };
         draw.schedule(() => callbacks.onBeat?.(info), click.time);
       }
     }
@@ -95,7 +88,7 @@ export function createMetronomeEngine(callbacks: MetronomeCallbacks = {}): Metro
       current = settings;
       const startTime = Tone.immediate() + START_DELAY;
       voices.open(startTime);
-      scheduler = startScheduler(measurePattern(settings.beats), settings.bpm, startTime);
+      scheduler = startScheduler(measurePattern(settings.meter), settings.bpm, startTime);
       timer = Tone.getContext().setInterval(pump, TIMER_INTERVAL);
       pump();
       callbacks.onRunningChange?.(true);
@@ -106,7 +99,7 @@ export function createMetronomeEngine(callbacks: MetronomeCallbacks = {}): Metro
       voices?.setVolumes(settings.volumes);
       if (!scheduler) return;
       if (settings.bpm !== previous?.bpm) scheduler = changeTempo(scheduler, settings.bpm);
-      if (settings.beats !== previous?.beats) scheduler = changePattern(scheduler, measurePattern(settings.beats));
+      if (settings.meter !== previous?.meter) scheduler = changePattern(scheduler, measurePattern(settings.meter));
     },
     stop: halt,
     isRunning: () => scheduler !== null,
