@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createMetronomeEngine, type BeatInfo, type MetronomeEngine } from '../../metronome/engine';
 import type { MetronomeSettings } from '../../metronome/settings';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 /** A beat as shown by the lights; `count` changes on every beat to restart the flash. */
 export interface LitBeat extends BeatInfo {
@@ -29,6 +30,8 @@ export function useMetronome(settings: MetronomeSettings) {
   }, []);
 
   useEffect(() => engineRef.current?.update(settings), [settings]);
+  // A phone on a drum stand must not dim while the metronome plays.
+  useWakeLock(running);
 
   const start = useCallback(() => engineRef.current?.start(settingsRef.current) ?? Promise.resolve(), []);
   const stop = useCallback(() => engineRef.current?.stop(), []);

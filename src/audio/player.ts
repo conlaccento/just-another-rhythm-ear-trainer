@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { meterKey, TICKS_PER_QUARTER, type Rhythm, type TimeSignature } from '../rhythm';
 import { CLICK_LEVEL, createInstruments, type Instruments } from './instruments';
+import { preferPlaybackSession } from './session';
 import { buildTimeline, metronomeLoop, quarterBpm, type TimelineOptions } from './timeline';
 
 /** `metronome`: the metronome alone, looping until stopped. */
@@ -74,6 +75,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
     async play(rhythm, options) {
       if (state !== 'idle') halt('stopped');
       const run = ++generation;
+      preferPlaybackSession();
       // Must be the first await so it runs inside the user gesture.
       await Tone.start();
       if (run !== generation) return 'stopped';
@@ -116,6 +118,7 @@ export function createPlayer(callbacks: PlayerCallbacks = {}): Player {
       }
       if (state !== 'idle') halt('stopped');
       const run = ++generation;
+      preferPlaybackSession();
       await Tone.start();
       if (run !== generation) return;
       instruments ??= createInstruments();

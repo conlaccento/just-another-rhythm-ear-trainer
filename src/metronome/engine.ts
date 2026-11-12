@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { preferPlaybackSession } from '../audio/session';
 import { advance, changePattern, changeTempo, startScheduler, type SchedulerState } from './clock';
 import { measurePattern } from './pattern';
 import type { MetronomeSettings } from './settings';
@@ -80,6 +81,7 @@ export function createMetronomeEngine(callbacks: MetronomeCallbacks = {}): Metro
     async start(settings) {
       halt();
       const run = generation;
+      preferPlaybackSession();
       // Must be the first await so it runs inside the user gesture (iOS, Safari).
       await Tone.start();
       if (run !== generation) return;

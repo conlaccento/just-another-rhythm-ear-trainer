@@ -3,6 +3,13 @@
 Web app per esercitarsi nel dettato ritmico: l'app genera un ritmo, lo studente lo
 ascolta e lo trascrive su carta, poi mostra la soluzione e si autocorregge.
 
+Dal menù in alto si passa al **metronomo per batteristi** (`#metronomo`): 35–250 BPM,
+tap tempo, tempi fino a 12/4, 24/8 e 48/16 con raggruppamenti di 2 e 3, un volume per
+livello (movimenti, crome, semicrome, terzine, accento), LED del battito, 30 programmi
+con nome, scaletta per i concerti e backup in JSON.
+
+L'app si può installare (PWA) e funziona anche offline dopo la prima visita.
+
 Online: https://conlaccento.github.io/just-another-rhythm-ear-trainer/
 
 ## Comandi
@@ -40,7 +47,14 @@ Pagine di sviluppo (solo con `npm run dev`): `/demo/notation.html` (renderer) e
   `Tone.Transport`, callback grafiche via `Tone.Draw`. Suono: LA centrale (A4) dal timbro pianistico, sintetizzato in FM, tenuto per la durata della figura; metronomo: click.
   Il pulsante "Solo metronomo" fa girare in loop il metronomo nel tempo dell'esercizio,
   seguendo in diretta i cambi di BPM.
-- `src/ui/` — interfaccia React: flusso dell'esercizio, impostazioni (localStorage),
+- `src/metronome/` — metronomo: scheduler a lookahead puro e testato (`clock.ts`),
+  tempi (`meter.ts`, basato su `src/rhythm/meters.ts`), pattern, tap tempo, programmi;
+  `engine.ts` e `voices.ts` lo suonano sull'AudioContext di Tone.js.
+- `src/sw-template.js` — service worker: alla build `vite.config.ts` lo completa con
+  l'elenco dei file e lo pubblica come `sw.js` (precache di tutto, pagine network-first).
+- `public/` — manifest e icone (`icons/icon.svg` è il disegno di partenza).
+- `src/ui/` — interfaccia React: menù e viste (`App.tsx`, `EarTrainer.tsx`,
+  `metronome/`), flusso dell'esercizio, impostazioni (localStorage),
   esercizio condivisibile via URL (`?seed=…&f=…&t=…&n=…&bpm=…`).
 
 ## Aggiungere una cella

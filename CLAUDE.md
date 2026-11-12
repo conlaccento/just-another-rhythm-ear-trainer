@@ -10,6 +10,12 @@ Two tools behind a top menu (view in the URL hash: `#dettato` default, `#metrono
 - `npm run build` - typecheck + Vite build; `base: './'` is required for the GitHub Pages subpath
 - `npx vite --port 5317 --strictPort` - dev server; demo pages at `/demo/notation.html`, `/demo/player.html` (keep them)
 
+## PWA
+- `src/sw-template.js` becomes `dist/sw.js` at build (plugin in `vite.config.ts`, precaching every emitted file plus `public/`); registered only in production, so test offline with `npm run build && npx vite preview`.
+- Cache lookups need `ignoreVary: true`: servers send `Vary: Origin` and module scripts carry an Origin header the precache requests lack.
+- Icons in `public/icons/` are PNGs rendered from `icon.svg` (maskable = same mark scaled to 62%); regenerate them if the mark changes.
+- Metronome keeps the screen on while running (`useWakeLock`); both players set the iOS Audio Session to `playback` so the silent switch does not mute them.
+
 ## Deploy
 - Every push to `main` runs tests, build and deploy to GitHub Pages (`.github/workflows/deploy.yml`); a failing test blocks the deploy.
 

@@ -588,6 +588,8 @@ select {
 }
 
 .field-help {
+  /* Long groupings (2+2+2+…) have no natural break points. */
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 400;
@@ -704,6 +706,7 @@ select {
 }
 
 .option-hint {
+  overflow-wrap: anywhere;
   margin: 4px 2px 0;
   color: var(--warning);
   font-size: 0.82rem;
@@ -1211,6 +1214,10 @@ select {
   }
   .beat-option[data-checked='true'] {
     border-color: Highlight;
+  }
+  /* Forced colours make the transparent bar visible: hide it on the other links. */
+  .app-nav a {
+    border-bottom-color: Canvas;
   }
   .app-nav a[aria-current='page'] {
     border-bottom-color: Highlight;

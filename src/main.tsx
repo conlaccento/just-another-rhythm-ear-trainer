@@ -13,3 +13,12 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+// Offline support (see src/sw-template.js); only in the built app, never in development.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Not fatal: the app still works online.
+    });
+  });
+}
